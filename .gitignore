@@ -1,0 +1,39 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- 虚拟环境 ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- 密钥 / 本地配置(保留示例文件) ---
+.env
+.env.*
+!.env.example
+
+# --- 工具缓存 ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- 运行产物 ---
+*.log
+replays/*.jsonl
+
+# --- IDE / 编辑器 ---
+.idea/
+.vscode/
+*.swp
+
+# --- 操作系统 ---
+.DS_Store
+Thumbs.db
