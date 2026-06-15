@@ -1,12 +1,11 @@
 from __future__ import annotations
-
-from content.scenarios.campus import build_campus_world
 from society.engine.turn_engine import run_turn
+from content.scenarios.triangle import build_triangle_world
 
 
 def main() -> None:
-    world = build_campus_world()
-    for _ in range(2):
+    world = build_triangle_world()
+    for _ in range(5):
         run_turn(world)
 
 

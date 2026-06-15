@@ -28,14 +28,17 @@ def render_event(event: Event) -> None:
 
 
 def run_turn(world: WorldState) -> None:
-    """一个回合:每个 agent 依次 感知→决策→落子→渲染。"""
+    """
+    一个回合:每个 agent 依次 感知→决策→落子→渲染。
+    """
     world.tick += 1
     print(f"\n===== tick {world.tick} =====")
 
     for agent in world.agents.values():
-        perception = perceive(world, agent)        # 看见
-        event = decide(perception, world.tick)     # 决定
-        apply_event(world, event)                  # 落子，影响世界
-        render_event(event)                        # 上帝视角输出
+        perception = perceive(world, agent)
+        events = decide(perception, world.tick)
+        for event in events:
+            apply_event(world, event)
+            render_event(event)
 
 

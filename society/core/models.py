@@ -53,7 +53,7 @@ class Agent:
 class WorldState:
     """整个世界的唯一事实来源。"""
     tick: int = 0
-    days_until_festival: int = 7  # 主线时钟:到 0 就是文化祭,逼所有人摊牌
+    days_until_deadline: int = 7
     agents: dict[str, Agent] = field(default_factory=dict)
     locations: dict[str, Location] = field(default_factory=dict)
     event_log: list[Event] = field(default_factory=list)

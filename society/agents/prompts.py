@@ -48,9 +48,12 @@ def build_user_prompt(perception: Perception) -> str:
     # —— 4. 要它干什么:只用 JSON 回应,动作种类 + 内容 ——
     lines.append(
         "\n现在请只用 JSON 回应,不要任何解释、旁白或代码围栏。\n"
-        "这一回合你只能做一个动作,因此只输出一个 JSON 对象,格式严格如下:\n"
-        '{"action": "speak 或 think", "content": "你要说的话 / 心里想的内容"}\n'
-        "speak = 你当众说出口的话;think = 只有你自己知道的心声。"
+        "你可以在这一回合同时做不止一件事:既说出口的话,也藏在心里的念头。\n"
+        "每做一件事,就输出一个 JSON 对象,各占一行,格式严格如下:\n"
+        '{"action": "speak", "content": "你当众说出口的话"}\n'
+        '{"action": "think", "content": "只有你自己知道的心声"}\n'
+        "speak = 当众说出口;think = 只有你自己知道的心声。\n"
+        "如果这一刻你只想做一件事,就只输出一个对象;不要输出 JSON 数组,逐行give出对象即可。"
     )
 
     return "\n".join(lines)
@@ -63,32 +66,44 @@ _ACTION_MAP = {
 }
 
 
-def parse_response(raw: str) -> tuple[ActionType, Visibility, str]:
+def parse_response(raw: str) -> list[tuple[ActionType, Visibility, str]]:
     """
-    解析llm response
-    解析失败时兜底成一句 PRIVATE 心声。
+    解析 LLM response,可能含【多个】动作对象(各占一行的裸对象)。
+    返回一个列表;整体一个都没解析出来时,兜底成【一条】 PRIVATE 心声(用 list 包着)。
     """
-    try:
-        body = raw[raw.index("{"): raw.rindex("}") + 1]
-        data = json.loads(body)
+    results: list[tuple[ActionType, Visibility, str]] = []
+    decoder = json.JSONDecoder()
 
-        action = str(data["action"]).strip().lower()
-        content = str(data["content"]).strip()
-        action_type, visibility = _ACTION_MAP[action]
-        if not content:
-            raise ValueError("content 为空")
-        return action_type, visibility, content
+    idx = raw.find("{")
+    while idx != -1:
+        try:
+            data, end = decoder.raw_decode(raw, idx)
+        except json.JSONDecodeError:
+            idx = raw.find("{", idx + 1)
+            continue
+        try:
+            action = str(data["action"]).strip().lower()
+            content = str(data["content"]).strip()
+            action_type, visibility = _ACTION_MAP[action]
+            if content:
+                results.append((action_type, visibility, content))
+        except (KeyError, ValueError):
+            pass
 
-    except (ValueError, KeyError, json.JSONDecodeError):
-        # 兜底:当作心声(PRIVATE),不污染公开广播;原文带出来,上帝视角好排查
-        return ActionType.THINK, Visibility.PRIVATE, f"(解析失败)原文:{raw.strip()}"
+        idx = raw.find("{", end)
+    if not results:
+        results.append(
+            (ActionType.THINK, Visibility.PRIVATE, f"(解析失败)原文:{raw.strip()}")
+        )
+    return results
 
 
 if __name__ == "__main__":
     cases = [
         '{"action": "speak", "content": "海报我来弄"}',
-        '```json\n{"action":"think","content":"得想想办法"}\n```',
-        '好的,这是我的回应:{"action":"speak","content":"加油"}',
+        '{"action":"think","content":"得想想"}\n{"action":"speak","content":"加油"}',
+        '```json\n{"action":"think","content":"嗯"}\n```',
+        '好的:{"action":"speak","content":"走"}',
         '我觉得我该说点什么',
     ]
     for c in cases:
