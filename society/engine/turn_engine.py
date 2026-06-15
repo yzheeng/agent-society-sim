@@ -23,11 +23,10 @@ def apply_event(world: WorldState, event: Event) -> None:
             # TODO
             pass
 
-def render_event(event: Event) -> None:
-    """上帝视角"""
-    god_mark = "  〔心声·仅上帝可见〕" if event.visibility.value == "private" else ""
-    print(f"  tick{event.tick}  {event.actor_id} [{event.type.value}]{god_mark}")
-    print(f"       {event.content}")
+def render_event(world: WorldState, event: Event) -> None:
+    """上帝视角:单行打印一条事件,便于调试扫读。"""
+    name = world.agents[event.actor_id].name
+    print(f"  {name} [{event.type.value}] {event.content}")
 
 
 def run_turn(world: WorldState) -> None:
@@ -44,7 +43,7 @@ def run_turn(world: WorldState) -> None:
         events = decide(perception, world.tick)
         for event in events:
             apply_event(world, event)
-            render_event(event)
+            render_event(world, event)
         remember(agent, world, perception.visible_events, events)
 
 

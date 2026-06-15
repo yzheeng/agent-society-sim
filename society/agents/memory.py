@@ -44,7 +44,7 @@ def remember(
         # MOVE / ACT 暂不处理
 
 
-def recall(agent: Agent, max_items: int = 8) -> list[str]:
+def recall(agent: Agent, max_items: int = 100) -> list[str]:
     """取出喂给 prompt 的短期记忆。
 
     现在:直接截断,保留最近 max_items 条。
