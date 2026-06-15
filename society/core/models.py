@@ -8,6 +8,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from .enums import ActionType, Visibility
 
+@dataclass
+class Location:
+    id: str
+    name: str
+    description: str = ""
 
 @dataclass
 class Event:
@@ -43,14 +48,6 @@ class Agent:
 
     # —— 记忆:先用最朴素的字符串列表,跑通后再升级成你那套短/长期记忆 ——
     memory: list[str] = field(default_factory=list)
-
-
-@dataclass
-class Location:
-    id: str
-    name: str
-    description: str = ""
-
 
 @dataclass
 class WorldState:
