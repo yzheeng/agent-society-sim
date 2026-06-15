@@ -18,22 +18,19 @@ def remember(
     perception_events: list[Event],
     my_events: list[Event],
 ) -> None:
-    """把这一拍 agent 的第一人称经历追加进它的短期记忆。
+    """把这一拍 agent 的第一人称经历追加进短期记忆。
 
-    两个来源:
-    1. 我感知到的别人的公开发言(来自 perception,即 perception_events)
-    2. 我自己这一拍的产出(说的话 + 心声 + 盘算,即 my_events)——
-       心声 / 盘算不经过 perception,必须在这里显式记下,否则下一拍就丢了。
+    两个来源,按时序拼接:
+    1. perception_events: 我刚刚感知到的别人公开发言(自上次 remember 以来累积的)
+    2. my_events: 我这一拍自己说的 / 想的 / 盘算的
 
-    写出来的字符串会被原样塞回 prompt 喂给 LLM,所以叙述视角必须始终是角色第一人称,
-    不带任何"第 N 回合"之类的调度结构痕迹——顺序由 list 的追加顺序天然承载。
+    perception 不会与已有 memory 重叠——perceive() 只返回"我上次动作之后"的事件,
+    而这些事件在此处会被吸收进 memory,所以不会再出现在下一次 perceive() 的结果里。
     """
-    # 1) 我听到别人说的
     for e in perception_events:
         speaker = world.agents[e.actor_id].name if e.actor_id in world.agents else e.actor_id
         agent.memory.append(f"我听到 {speaker} 说:「{e.content}」")
 
-    # 2) 我自己说的 / 想的 / 盘算的
     for e in my_events:
         if e.type == ActionType.SPEAK:
             agent.memory.append(f"我说过:「{e.content}」")

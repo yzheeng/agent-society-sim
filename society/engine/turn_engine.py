@@ -37,7 +37,8 @@ def run_turn(world: WorldState) -> None:
     """
     world.tick += 1
     print(f"\n===== tick {world.tick} =====")
-    ## 逐人处理
+    ## 逐人处理:perceive 的边界是"自我上次动作之后",所以先行动者下回合
+    ## 自然能在 perception 里捡到后行动者本回合的发言,不需要回合末额外 pass。
     for agent in world.agents.values():
         perception = perceive(world, agent)
         events = decide(perception, world.tick)

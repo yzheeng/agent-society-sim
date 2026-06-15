@@ -49,18 +49,16 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
         lines.append("我脑子里还回响着这些片段(只有我自己记得):")
         lines.extend(f"- {m}" for m in recalled)
 
-    # —— 4. 此刻——
-    if perception.others_present:
+    # —— 4. 此刻——只在确有他人发言时才铺;无事发生就不要硬塞"安静"
+    #              ——以免让 LLM 误读成"大家在等我开口"的张力。
+    if perception.visible_events:
         id_to_name = {other.id: other.name for other in perception.others_present}
         id_to_name[me.id] = me.name
         lines.append("")
-        if perception.visible_events:
-            lines.append("就在此刻——")
-            for e in perception.visible_events:
-                speaker = id_to_name.get(e.actor_id, e.actor_id)
-                lines.append(f"我听见{speaker}说:「{e.content}」")
-        else:
-            lines.append("就在此刻——空气安静了一拍,没人开口,但谁都没散,都好像在等。")
+        lines.append("就在此刻——")
+        for e in perception.visible_events:
+            speaker = id_to_name.get(e.actor_id, e.actor_id)
+            lines.append(f"我听见{speaker}说:「{e.content}」")
 
     return "\n".join(lines)
 
