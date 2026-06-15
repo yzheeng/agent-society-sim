@@ -16,15 +16,17 @@ class Perception:
 
 
 def perceive(world: WorldState, agent: Agent) -> Perception:
-    """给定当前的世界，输出agent当前回合的感知"""
-    # 当前agent的可见事件
+    """给定当前世界，输出 agent 这一拍能合法感知到的【新鲜】信息。
+    只看本回合(world.tick)在当前地点发生的 PUBLIC 事件——历史交给 memory,
+    """
     visible_events = [
         e for e in world.event_log
         if e.location_id == agent.location_id
         and e.visibility == Visibility.PUBLIC
+        and e.tick == world.tick
+        and e.actor_id != agent.id
     ]
 
-    # 同地点存在的其他人物
     others_present = [
         a for a in world.agents_at(agent.location_id)
         if a.id != agent.id

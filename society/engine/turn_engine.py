@@ -5,6 +5,7 @@ from society.core.models import Event, WorldState
 from society.core.enums import ActionType
 from society.engine.perception import perceive
 from society.agents.brain import decide
+from society.agents.memory import remember
 
 
 def apply_event(world: WorldState, event: Event) -> None:
@@ -28,17 +29,20 @@ def render_event(event: Event) -> None:
 
 
 def run_turn(world: WorldState) -> None:
-    """
-    一个回合:每个 agent 依次 感知→决策→落子→渲染。
+    """一个回合:每个 agent 依次 感知→决策→落子→渲染→沉淀记忆。
+
+    sequential 模型:每人落子后立刻写回 event_log,
+    因此后行动者的 perceive 能切到本回合先行动者刚说的 PUBLIC 事件。
     """
     world.tick += 1
     print(f"\n===== tick {world.tick} =====")
-
+    ## 逐人处理
     for agent in world.agents.values():
         perception = perceive(world, agent)
         events = decide(perception, world.tick)
         for event in events:
             apply_event(world, event)
             render_event(event)
+        remember(agent, world, perception.visible_events, events)
 
 

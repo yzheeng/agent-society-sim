@@ -15,7 +15,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_user_prompt(perception: Perception) -> str:
+def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
     """把感知拼成一段"此刻的处境描述",末尾要求它给出一个动作。"""
     me = perception.self_agent
 
@@ -37,13 +37,18 @@ def build_user_prompt(perception: Perception) -> str:
     else:
         lines.append("\n【现场只有你一个人】")
 
-    # —— 3. 我看见/听到了什么——
+    # —— 3. 最近经历(短期记忆) ——
+    if recalled:
+        lines.append("\n【你最近经历的(只有你自己记得,包括你没说出口的心声)】")
+        lines.extend(f"- {m}" for m in recalled)
+
+    # —— 4. 我此刻看见/听到了什么——
     if perception.visible_events:
-        lines.append("\n【你看到/听到的】")
+        lines.append("\n【你此刻看到/听到的】")
         for e in perception.visible_events:
             lines.append(f"- {e.actor_id}:{e.content}")
     else:
-        lines.append("\n【周围很安静,没有发生什么】")
+        lines.append("\n【此刻周围很安静,没有新的动静】")
 
     # —— 4. 要它干什么:只用 JSON 回应,动作种类 + 内容 ——
     lines.append(

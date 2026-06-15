@@ -7,12 +7,14 @@ from society.core.models import Event
 from society.engine.perception import Perception
 from society.llm.client import chat
 from society.agents.prompts import SYSTEM_PROMPT, build_user_prompt, parse_response
+from society.agents.memory import recall
 
 
 def decide(perception: Perception, tick: int) -> list[Event]:
     me = perception.self_agent
-    # 把 agent 的感知构建成 prompt
-    user_prompt = build_user_prompt(perception)
+    # 取短期记忆,和感知一起拼进 prompt
+    recalled = recall(me)
+    user_prompt = build_user_prompt(perception, recalled)
     # llm
     raw = chat(user_prompt, system=SYSTEM_PROMPT)
     # 解析:现在拿到的是一串 (action_type, visibility, content)
