@@ -13,3 +13,4 @@ class ActionType(Enum):
     MOVE = "move"    # 移动到别的地点
     ACT = "act"      # 对世界做点什么(贴海报、送东西……)
     THINK = "think"  # 内心活动 —— 永远是 PRIVATE
+    PLAN = "plan"    # 调整自己的"眼下打算" —— 永远是 PRIVATE,落子时写回 agent.plan

@@ -14,6 +14,8 @@ def apply_event(world: WorldState, event: Event) -> None:
     match event.type:
         case ActionType.SPEAK | ActionType.THINK:
             pass
+        case ActionType.PLAN:
+            world.agents[event.actor_id].plan = event.content
         case ActionType.MOVE:
             # TODO
             pass

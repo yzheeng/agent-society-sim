@@ -50,14 +50,15 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
     else:
         lines.append("\n【此刻周围很安静,没有新的动静】")
 
-    # —— 4. 要它干什么:只用 JSON 回应,动作种类 + 内容 ——
+    # —— 5. 要它干什么:只用 JSON 回应,动作种类 + 内容 ——
     lines.append(
         "\n现在请只用 JSON 回应,不要任何解释、旁白或代码围栏。\n"
-        "你可以在这一回合同时做不止一件事:既说出口的话,也藏在心里的念头。\n"
+        "你可以在这一回合同时做不止一件事:既说出口的话,也藏在心里的念头,还可以更新你下一步的打算。\n"
         "每做一件事,就输出一个 JSON 对象,各占一行,格式严格如下:\n"
         '{"action": "speak", "content": "你当众说出口的话"}\n'
         '{"action": "think", "content": "只有你自己知道的心声"}\n'
-        "speak = 当众说出口;think = 只有你自己知道的心声。\n"
+        '{"action": "plan",  "content": "你下一步的打算,只有你自己看得到"}\n'
+        "speak = 当众说出口;think = 只有你自己知道的心声;plan = 更新你的眼下打算,下一拍生效;同一回合最多输出一条 plan。\n"
         "如果这一刻你只想做一件事,就只输出一个对象;不要输出 JSON 数组,逐行give出对象即可。"
     )
 
@@ -68,6 +69,7 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
 _ACTION_MAP = {
     "speak": (ActionType.SPEAK, Visibility.PUBLIC),
     "think": (ActionType.THINK, Visibility.PRIVATE),
+    "plan":  (ActionType.PLAN,  Visibility.PRIVATE),
 }
 
 

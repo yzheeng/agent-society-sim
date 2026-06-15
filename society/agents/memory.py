@@ -22,8 +22,8 @@ def remember(
 
     两个来源:
     1. 我感知到的别人的公开发言(来自 perception,即 perception_events)
-    2. 我自己这一拍的产出(说的话 + 心声,即 my_events)——
-       心声不经过 perception,必须在这里显式记下,否则下一拍就丢了。
+    2. 我自己这一拍的产出(说的话 + 心声 + 盘算,即 my_events)——
+       心声 / 盘算不经过 perception,必须在这里显式记下,否则下一拍就丢了。
     """
     tick = world.tick
 
@@ -32,12 +32,14 @@ def remember(
         speaker = world.agents[e.actor_id].name if e.actor_id in world.agents else e.actor_id
         agent.memory.append(f"第{tick}回合 我听到 {speaker} 说:「{e.content}」")
 
-    # 2) 我自己说的 / 想的
+    # 2) 我自己说的 / 想的 / 盘算的
     for e in my_events:
         if e.type == ActionType.SPEAK:
             agent.memory.append(f"第{tick}回合 我说:「{e.content}」")
         elif e.type == ActionType.THINK:
             agent.memory.append(f"第{tick}回合 我心想:「{e.content}」")
+        elif e.type == ActionType.PLAN:
+            agent.memory.append(f"第{tick}回合 我盘算:「{e.content}」")
         # MOVE / ACT 暂不处理
 
 
