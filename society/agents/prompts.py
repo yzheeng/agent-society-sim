@@ -8,59 +8,59 @@ import json
 from society.core.enums import ActionType, Visibility
 
 SYSTEM_PROMPT = (
-    "你在参与一场多人社会模拟。你将扮演一个角色,"
-    "依据你的人设、私密目标和当前处境,做出一个符合性格的反应。"
-    "记住:你的私密目标和秘密只有你自己知道,别人看不到你的内心。"
-    "不要解释、不要旁白,只直接给出你这个角色此刻的反应。"
+    "下面那段文字里的「我」就是你这个人——这个人的过往、心思、藏着的事、此刻的感官,都是你自己的,不是你在演谁。\n"
+    "请以「我」的口吻,如实写下此刻的反应。不要解释,不要在第三方视角上点评自己,不要写「作为某某我...」这样的话。\n"
+    "\n"
+    "请只输出 JSON 对象,逐行裸对象,不带任何前后缀文字、不要数组、不要代码围栏。这一刻你可以输出以下几类,各占一行;按需输出 0 或多条,但 plan 至多 1 条:\n"
+    '{"action":"speak","content":"我此刻当众说出口的话"}\n'
+    '{"action":"think","content":"我此刻心里默默掠过的念头,谁也听不到"}\n'
+    '{"action":"plan","content":"我此刻心里盘算的下一步——这只是我的眼前心思,等会儿会随情况再变"}\n'
 )
 
 
 def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
-    """把感知拼成一段"此刻的处境描述",末尾要求它给出一个动作。"""
+    """把感知拼成一段角色的第一人称内独白,以「我」的口吻自然展开。"""
     me = perception.self_agent
 
-    # —— 1. 我是谁——
+    # —— 1. 我是谁(融成内独白,不打分层标签) ——
     lines = [
-        f"你是{me.name}。",
-        f"【公开人设】{me.public_persona}",
-        f"【你的私密目标】{me.private_goal}",
-        f"【你的秘密】{me.secret}",
+        f"我是{me.name}。",
+        f"人前的我,{me.public_persona}。",
+        f"可我心里真正想要的,是{me.private_goal}。",
+        f"我藏着没让任何人知道的事:{me.secret}。",
     ]
     if me.plan:
-        lines.append(f"【你眼下的打算】{me.plan}")
+        lines.append(f"我手头的打算:{me.plan}。")
 
-    # —— 2. 现场还有谁  ——
+    # —— 2. 此刻四周 ——
     if perception.others_present:
-        lines.append("\n【此刻在场的其他人(你只了解他们公开的一面)】")
+        lines.append("")
+        lines.append("我抬眼环顾四周——")
         for other in perception.others_present:
-            lines.append(f"- {other.name}:{other.public_persona}")
+            lines.append(f"{other.name}也在,在所有人眼里是「{other.public_persona}」。")
+        lines.append("我跟他们打交道,看到的也就是他们摆给所有人看的那一面。")
     else:
-        lines.append("\n【现场只有你一个人】")
+        lines.append("")
+        lines.append("此刻这儿就我一个,周围没别人。")
 
-    # —— 3. 最近经历(短期记忆) ——
+    # —— 3. 我脑子里还回响着的 ——
     if recalled:
-        lines.append("\n【你最近经历的(只有你自己记得,包括你没说出口的心声)】")
+        lines.append("")
+        lines.append("我脑子里还回响着这些片段(只有我自己记得):")
         lines.extend(f"- {m}" for m in recalled)
 
-    # —— 4. 我此刻看见/听到了什么——
-    if perception.visible_events:
-        lines.append("\n【你此刻看到/听到的】")
-        for e in perception.visible_events:
-            lines.append(f"- {e.actor_id}:{e.content}")
-    else:
-        lines.append("\n【此刻周围很安静,没有新的动静】")
-
-    # —— 5. 要它干什么:只用 JSON 回应,动作种类 + 内容 ——
-    lines.append(
-        "\n现在请只用 JSON 回应,不要任何解释、旁白或代码围栏。\n"
-        "你可以在这一回合同时做不止一件事:既说出口的话,也藏在心里的念头,还可以更新你下一步的打算。\n"
-        "每做一件事,就输出一个 JSON 对象,各占一行,格式严格如下:\n"
-        '{"action": "speak", "content": "你当众说出口的话"}\n'
-        '{"action": "think", "content": "只有你自己知道的心声"}\n'
-        '{"action": "plan",  "content": "你下一步的打算,只有你自己看得到"}\n'
-        "speak = 当众说出口;think = 只有你自己知道的心声;plan = 更新你的眼下打算,下一拍生效;同一回合最多输出一条 plan。\n"
-        "如果这一刻你只想做一件事,就只输出一个对象;不要输出 JSON 数组,逐行give出对象即可。"
-    )
+    # —— 4. 此刻——
+    if perception.others_present:
+        id_to_name = {other.id: other.name for other in perception.others_present}
+        id_to_name[me.id] = me.name
+        lines.append("")
+        if perception.visible_events:
+            lines.append("就在此刻——")
+            for e in perception.visible_events:
+                speaker = id_to_name.get(e.actor_id, e.actor_id)
+                lines.append(f"我听见{speaker}说:「{e.content}」")
+        else:
+            lines.append("就在此刻——空气安静了一拍,没人开口,但谁都没散,都好像在等。")
 
     return "\n".join(lines)
 
