@@ -4,7 +4,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 
-from society.core.models import Agent, Event, WorldState
+from society.core.models import Agent, Event, Location, WorldState
 from society.core.enums import Visibility
 
 
@@ -13,6 +13,7 @@ class Perception:
     self_agent: Agent              # 它自己(私密层在这里面:goal / secret / plan)
     visible_events: list[Event] = field(default_factory=list)  # 它能看见的公开事件
     others_present: list[Agent] = field(default_factory=list)  # 同地点还有谁在场
+    location_catalog: dict[str, Location] = field(default_factory=dict)  # 我此刻知道还能去的地方
 
 
 def perceive(world: WorldState, agent: Agent) -> Perception:
@@ -45,4 +46,5 @@ def perceive(world: WorldState, agent: Agent) -> Perception:
         self_agent=agent,
         visible_events=visible_events,
         others_present=others_present,
+        location_catalog=world.locations,
     )

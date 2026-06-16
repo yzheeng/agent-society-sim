@@ -29,7 +29,13 @@ def remember(
     """
     for e in perception_events:
         speaker = world.agents[e.actor_id].name if e.actor_id in world.agents else e.actor_id
-        agent.memory.append(f"我听到 {speaker} 说:「{e.content}」")
+        if e.type == ActionType.SPEAK:
+            agent.memory.append(f"我听到 {speaker} 说:「{e.content}」")
+        elif e.type == ActionType.ACT:
+            agent.memory.append(f"我看到 {speaker}:{e.content}")
+        elif e.type == ActionType.MOVE:
+            # content 已是模板渲染好的"X 离开了,去往 Y" 或 "X 来了"
+            agent.memory.append(f"我看到 {e.content}")
 
     for e in my_events:
         if e.type == ActionType.SPEAK:
@@ -38,7 +44,13 @@ def remember(
             agent.memory.append(f"我心里掠过:「{e.content}」")
         elif e.type == ActionType.PLAN:
             agent.memory.append(f"我盘算着:「{e.content}」")
-        # MOVE / ACT 暂不处理
+        elif e.type == ActionType.ACT:
+            agent.memory.append(f"我做了:{e.content}")
+        elif e.type == ActionType.MOVE:
+            # 自己永远 perceive 不到自己的两条 MOVE,得在这里给自己留一条"换地"的痕迹
+            dest = world.locations.get(e.destination_id) if e.destination_id else None
+            dest_name = dest.name if dest else e.destination_id
+            agent.memory.append(f"我去了 {dest_name}")
 
 
 def recall(agent: Agent, max_items: int = 100) -> list[str]:

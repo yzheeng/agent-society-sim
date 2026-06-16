@@ -25,6 +25,7 @@ class Event:
     location_id: str           # 在哪儿发生
     targets: list[str] = field(default_factory=list)      # 指向谁(可空)
     visibility: Visibility = Visibility.PUBLIC
+    destination_id: str | None = None  # 仅 MOVE 用:目的地点 id;其它动作留空
 
 
 @dataclass

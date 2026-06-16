@@ -2,26 +2,70 @@
 from __future__ import annotations
 
 from society.core.models import Event, WorldState
-from society.core.enums import ActionType
+from society.core.enums import ActionType, Visibility
 from society.engine.perception import perceive
 from society.agents.brain import decide
 from society.agents.memory import remember
 
 
-def apply_event(world: WorldState, event: Event) -> None:
-    """把一个event真正落进世界"""
-    world.event_log.append(event)
+def apply_event(world: WorldState, event: Event) -> list[Event]:
+    """把一个 event 真正落进世界。返回真正进入 event_log 的事件列表
+    (大多数情况是 [event] 本身;MOVE 会展开成 [离场, 到场] 两条)。"""
     match event.type:
         case ActionType.SPEAK | ActionType.THINK:
-            pass
+            world.event_log.append(event)
+            return [event]
         case ActionType.PLAN:
             world.agents[event.actor_id].plan = event.content
+            world.event_log.append(event)
+            return [event]
         case ActionType.MOVE:
-            # TODO
-            pass
+            return _apply_move(world, event)
         case ActionType.ACT:
-            # TODO
-            pass
+            # 叙述型 ACT:不改任何结构化世界状态,只入 log。
+            # 可见性由 perceive() 的 PUBLIC + 同 location 过滤自然覆盖。
+            world.event_log.append(event)
+            return [event]
+    return []
+
+
+def _apply_move(world: WorldState, event: Event) -> list[Event]:
+    """MOVE 落子:写离场事件 → 更新 agent.location_id → 写到场事件。
+    brain 给来的原 event 只是「意图」,不入 log。"""
+    dest_id = event.destination_id
+    if dest_id is None or dest_id not in world.locations:
+        return []  # 非法/缺字段:fail-safe 静默丢弃
+    agent = world.agents[event.actor_id]
+    if dest_id == agent.location_id:
+        return []  # 已在目的地,无需移动
+    dest = world.locations[dest_id]
+    origin_id = agent.location_id
+
+    departure = Event(
+        tick=event.tick,
+        actor_id=event.actor_id,
+        type=ActionType.MOVE,
+        content=f"{agent.name} 离开了,去往 {dest.name}",
+        location_id=origin_id,
+        destination_id=dest_id,
+        visibility=Visibility.PUBLIC,
+    )
+    world.event_log.append(departure)
+
+    agent.location_id = dest_id
+
+    arrival = Event(
+        tick=event.tick,
+        actor_id=event.actor_id,
+        type=ActionType.MOVE,
+        content=f"{agent.name} 来到了 {dest.name}",
+        location_id=dest_id,
+        destination_id=dest_id,
+        visibility=Visibility.PUBLIC,
+    )
+    world.event_log.append(arrival)
+    return [departure, arrival]
+
 
 def render_event(world: WorldState, event: Event) -> None:
     """上帝视角:单行打印一条事件,便于调试扫读。"""
@@ -43,8 +87,9 @@ def run_turn(world: WorldState) -> None:
         perception = perceive(world, agent)
         events = decide(perception, world.tick)
         for event in events:
-            apply_event(world, event)
-            render_event(world, event)
+            applied = apply_event(world, event)
+            for e in applied:
+                render_event(world, e)
         remember(agent, world, perception.visible_events, events)
 
 
