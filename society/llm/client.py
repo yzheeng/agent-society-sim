@@ -7,16 +7,17 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from society.config import load_config
+
 load_dotenv()
 
-_api_key = os.environ.get("DEEPSEEK_API_KEY")
+_cfg = load_config().llm
+_api_key = os.environ.get(_cfg.api_key_env)
 if not _api_key:
-    raise RuntimeError("缺少 DEEPSEEK_API_KEY,请在项目根目录的 .env 里设置")
+    raise RuntimeError(f"缺少 {_cfg.api_key_env},请在项目根目录的 .env 里设置")
 
-_BASE_URL = "https://api.deepseek.com"
-_MODEL = "deepseek-v4-flash"
+_client = OpenAI(api_key=_api_key, base_url=_cfg.base_url)
 
-_client = OpenAI(api_key=_api_key, base_url=_BASE_URL)
 
 def chat(prompt: str, system: str = "") -> str:
     messages = []
@@ -25,7 +26,7 @@ def chat(prompt: str, system: str = "") -> str:
     messages.append({"role": "user", "content": prompt})
 
     resp = _client.chat.completions.create(
-        model=_MODEL,
+        model=_cfg.model,
         messages=messages,
         stream=False,
     )

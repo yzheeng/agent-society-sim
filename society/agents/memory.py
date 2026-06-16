@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+from society.config import load_config
 from society.core.models import Agent, Event, WorldState
 from society.core.enums import ActionType
 
@@ -53,11 +54,13 @@ def remember(
             agent.memory.append(f"我去了 {dest_name}")
 
 
-def recall(agent: Agent, max_items: int = 100) -> list[str]:
+def recall(agent: Agent, max_items: int | None = None) -> list[str]:
     """取出喂给 prompt 的短期记忆。
 
-    现在:直接截断,保留最近 max_items 条。
+    现在:直接截断,保留最近 max_items 条;不传则走 config.memory.recall_window。
     以后升级长期记忆时,**只改这个函数**——把超出窗口的旧记忆压缩成摘要
     拼在返回结果前面,prompt 构建那边一行都不用动。这是预留的升级口子。
     """
+    if max_items is None:
+        max_items = load_config().memory.recall_window
     return agent.memory[-max_items:]
