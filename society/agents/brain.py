@@ -1,54 +1,95 @@
 """
-agent行动层
+agent 行动层:把 perception 喂给 LLM,拿回 tool_calls,翻译成 Event。
 """
 from __future__ import annotations
 
+import json
+
 from society.core.models import Event
-from society.core.enums import ActionType
+from society.core.enums import ActionType, Visibility
 from society.engine.perception import Perception
 from society.llm.client import chat
-from society.agents.prompts import SYSTEM_PROMPT, build_user_prompt, parse_response
+from society.agents.prompts import SYSTEM_PROMPT, build_user_prompt
+from society.agents.tools import build_tools
 from society.agents.memory import recall
 
 
 def decide(perception: Perception, tick: int) -> list[Event]:
     me = perception.self_agent
-    # 取短期记忆,和感知一起拼进 prompt
     recalled = recall(me)
     user_prompt = build_user_prompt(perception, recalled)
-    # llm
-    raw = chat(user_prompt, system=SYSTEM_PROMPT)
-    parsed = parse_response(raw)
+    tools = build_tools(perception)
+
+    msg = chat(user_prompt, system=SYSTEM_PROMPT, tools=tools)
+
+    # 兜底:tool_choice=required 理应保证总有 tool_calls,但 DeepSeek 偶发不遵守。
+    # 留个内观痕迹便于事后排查,不让这一拍空过。
+    if not msg.tool_calls:
+        return [Event(
+            tick=tick,
+            actor_id=me.id,
+            type=ActionType.THINK,
+            content=f"(LLM 未调 tool)原文:{(msg.content or '').strip()}",
+            location_id=me.location_id,
+            visibility=Visibility.PRIVATE,
+        )]
 
     events: list[Event] = []
-    for action in parsed:
-        if action.action_type == ActionType.MOVE:
-            # destination 必须在世界目录里;不合法就静默丢弃这次移动(fail-safe)
-            if action.destination_id not in perception.location_catalog:
+    for call in msg.tool_calls:
+        name = call.function.name
+        try:
+            args = json.loads(call.function.arguments or "{}")
+        except json.JSONDecodeError:
+            continue
+        try:
+            action_type = ActionType(name)
+        except ValueError:
+            continue
+
+        if action_type == ActionType.MOVE:
+            destination = args.get("destination")
+            if not destination:
                 continue
-            if action.destination_id == me.location_id:
-                # 已经在目的地了,不必动
-                continue
-            events.append(
-                Event(
-                    tick=tick,
-                    actor_id=me.id,
-                    type=ActionType.MOVE,
-                    content="",  # 内容由 apply_event 用模板渲染
-                    location_id=me.location_id,  # 出发地
-                    destination_id=action.destination_id,
-                    visibility=action.visibility,
-                )
-            )
+            events.append(Event(
+                tick=tick,
+                actor_id=me.id,
+                type=ActionType.MOVE,
+                content="",  # apply_event 用模板渲染
+                location_id=me.location_id,
+                destination_id=destination,
+                visibility=Visibility.PUBLIC,
+            ))
         else:
-            events.append(
-                Event(
-                    tick=tick,
-                    actor_id=me.id,
-                    type=action.action_type,
-                    content=action.content,
-                    location_id=me.location_id,
-                    visibility=action.visibility,
-                )
+            content = str(args.get("content", "")).strip()
+            if not content:
+                continue
+            visibility = (
+                Visibility.PRIVATE
+                if action_type in (ActionType.THINK, ActionType.PLAN)
+                else Visibility.PUBLIC
             )
+            events.append(Event(
+                tick=tick,
+                actor_id=me.id,
+                type=action_type,
+                content=content,
+                location_id=me.location_id,
+                visibility=visibility,
+            ))
+
+    # MOVE 独占一拍:含 MOVE 时只保留首条 MOVE + 所有 THINK / PLAN,
+    # 丢弃 SPEAK / ACT 和多余的 MOVE。脚一旦迈出去就专心走。
+    if any(e.type == ActionType.MOVE for e in events):
+        filtered: list[Event] = []
+        move_kept = False
+        for e in events:
+            if e.type == ActionType.MOVE:
+                if not move_kept:
+                    filtered.append(e)
+                    move_kept = True
+            elif e.type in (ActionType.THINK, ActionType.PLAN):
+                filtered.append(e)
+            # SPEAK / ACT:丢弃
+        events = filtered
+
     return events
