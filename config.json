@@ -8,6 +8,10 @@
     "recall_window": 100
   },
   "simulation": {
-    "num_turns": 5
+    "num_turns": 1
+  },
+  "persistence": {
+    "enabled": true,
+    "data_dir": "data"
   }
 }

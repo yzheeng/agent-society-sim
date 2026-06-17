@@ -14,6 +14,14 @@ class Location:
     name: str
     description: str = ""
 
+    def to_dict(self) -> dict:
+        return {"id": self.id, "name": self.name, "description": self.description}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Location":
+        return cls(id=d["id"], name=d["name"], description=d.get("description", ""))
+
+
 @dataclass
 class Event:
     """世界里发生的一件事。整条 event_log 就是这个世界的全部历史,
@@ -26,6 +34,31 @@ class Event:
     targets: list[str] = field(default_factory=list)      # 指向谁(可空)
     visibility: Visibility = Visibility.PUBLIC
     destination_id: str | None = None  # 仅 MOVE 用:目的地点 id;其它动作留空
+
+    def to_dict(self) -> dict:
+        return {
+            "tick": self.tick,
+            "actor_id": self.actor_id,
+            "type": self.type.value,
+            "content": self.content,
+            "location_id": self.location_id,
+            "targets": self.targets,
+            "visibility": self.visibility.value,
+            "destination_id": self.destination_id,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Event":
+        return cls(
+            tick=d["tick"],
+            actor_id=d["actor_id"],
+            type=ActionType(d["type"]),
+            content=d["content"],
+            location_id=d["location_id"],
+            targets=list(d.get("targets", [])),
+            visibility=Visibility(d.get("visibility", Visibility.PUBLIC.value)),
+            destination_id=d.get("destination_id"),
+        )
 
 
 @dataclass
@@ -50,6 +83,34 @@ class Agent:
     # —— 记忆:先用最朴素的字符串列表,跑通后再升级成你那套短/长期记忆 ——
     memory: list[str] = field(default_factory=list)
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "location_id": self.location_id,
+            "public_persona": self.public_persona,
+            "private_goal": self.private_goal,
+            "secret": self.secret,
+            "plan": self.plan,
+            "relationships": dict(self.relationships),
+            "memory": list(self.memory),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Agent":
+        return cls(
+            id=d["id"],
+            name=d["name"],
+            location_id=d["location_id"],
+            public_persona=d["public_persona"],
+            private_goal=d["private_goal"],
+            secret=d["secret"],
+            plan=d.get("plan", ""),
+            relationships=dict(d.get("relationships", {})),
+            memory=list(d.get("memory", [])),
+        )
+
+
 @dataclass
 class WorldState:
     """整个世界的唯一事实来源。"""
@@ -62,3 +123,11 @@ class WorldState:
     def agents_at(self, location_id: str) -> list[Agent]:
         """某地点此刻在场的 agent —— 下一步的感知过滤会用到它。"""
         return [a for a in self.agents.values() if a.location_id == location_id]
+
+    def to_meta_dict(self) -> dict:
+        """只 dump 元状态(tick / deadline / locations);agents 和 event_log 分文件存。"""
+        return {
+            "tick": self.tick,
+            "days_until_deadline": self.days_until_deadline,
+            "locations": {lid: loc.to_dict() for lid, loc in self.locations.items()},
+        }

@@ -28,6 +28,7 @@ htmlcov/
 # --- 运行产物 ---
 *.log
 replays/*.jsonl
+data/
 
 # --- IDE / 编辑器 ---
 .idea/

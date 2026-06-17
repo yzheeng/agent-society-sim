@@ -29,10 +29,17 @@ class SimulationConfig:
 
 
 @dataclass(frozen=True)
+class PersistenceConfig:
+    enabled: bool
+    data_dir: str   # 相对项目根
+
+
+@dataclass(frozen=True)
 class Config:
     llm: LLMConfig
     memory: MemoryConfig
     simulation: SimulationConfig
+    persistence: PersistenceConfig
 
 
 _DEFAULT_PATH = Path(__file__).parent.parent / "config.json"
@@ -50,6 +57,7 @@ def load_config(path: Path | None = None) -> Config:
         llm=LLMConfig(**raw["llm"]),
         memory=MemoryConfig(**raw["memory"]),
         simulation=SimulationConfig(**raw["simulation"]),
+        persistence=PersistenceConfig(**raw["persistence"]),
     )
     if path is None:
         _cached = config
