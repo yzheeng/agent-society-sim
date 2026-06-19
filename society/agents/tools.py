@@ -25,7 +25,10 @@ def build_tools(perception: Perception) -> list[dict]:
 
     string_content = {
         "type": "object",
-        "properties": {"content": {"type": "string", "description": "具体内容"}},
+        "properties": {"content": {
+            "type": "string",
+            "description": "一段连续文字,不要换行,不要分段,不要用 - 项目符号或任何 markdown 格式",
+        }},
         "required": ["content"],
     }
 

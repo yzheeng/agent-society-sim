@@ -14,6 +14,15 @@ from society.agents.tools import build_tools
 from society.agents.memory import recall
 
 
+def _normalize(s: str) -> str:
+    """把 LLM 给的 content 单行化:所有连续 whitespace(含 \\n / \\t / 多个空格)折成一个空格。
+
+    memory 单条 = 单行是 prompts.py:53 (`- {m}`) 渲染逻辑的隐式契约;
+    event_log content 单行也便于 jsonl 阅读。在这里统一兜底,renderer 一行不动。
+    """
+    return " ".join(s.split())
+
+
 def decide(perception: Perception, tick: int) -> list[Event]:
     me = perception.self_agent
     recalled = recall(me)
@@ -29,7 +38,7 @@ def decide(perception: Perception, tick: int) -> list[Event]:
             tick=tick,
             actor_id=me.id,
             type=ActionType.THINK,
-            content=f"(LLM 未调 tool)原文:{(msg.content or '').strip()}",
+            content=f"(LLM 未调 tool)原文:{_normalize(msg.content or '')}",
             location_id=me.location_id,
             visibility=Visibility.PRIVATE,
         )]
@@ -60,7 +69,7 @@ def decide(perception: Perception, tick: int) -> list[Event]:
                 visibility=Visibility.PUBLIC,
             ))
         else:
-            content = str(args.get("content", "")).strip()
+            content = _normalize(str(args.get("content", "")))
             if not content:
                 continue
             visibility = (

@@ -6,8 +6,8 @@
   },
   "memory": {
     "compression": {
-      "trigger_size": 150,
-      "keep_recent": 80
+      "trigger_size": 30,
+      "keep_recent": 10
     }
   },
   "simulation": {
