@@ -21,11 +21,18 @@ from society.llm.client import chat
 _SUMMARY_PREFIX = "【此前梗概】"
 
 _COMPRESSION_SYSTEM = (
-    "下面那些片段是「我」最近一段时间真实经历过的事——说过的话、听到的话、"
-    "心里掠过的念头、做过的动作。请以「我」的口吻,把它们压成一段连贯的回忆,"
-    "保留关键人物、关键事件、关键情绪、还没解开的张力。\n"
-    "不要列点,不要分段,不要写「总结一下」「综上所述」「以上是」这类话——"
-    "就像我自己事后回想起这一段日子,自然地讲出来。"
+    "下面那些片段是「我」最近一段时间真实经历过的事。\n"
+    "\n"
+    "请以「我」的口吻,把它们压成一段简短的回忆——把发生过的事一桩一桩留住骨架。"
+    "谁说过什么大概意思、谁去了哪里、谁做了什么、我当时是什么感受,这些都该留下;"
+    "但具体的措辞、动作细节、来回拌嘴可以淡化。\n"
+    "\n"
+    "就像几天后再回想:还能记得这段经历发生过什么、心里大概是什么感受,"
+    "但很多原话已经记不清了。\n"
+    "\n"
+    "3-5 条,全文不超过 200 字。每条之间用一个空格分开,"
+    "不要换行,不要用 - 项目符号,不要任何 markdown 格式。"
+    "不要写「总结一下」「综上所述」「以上是」这类话。"
 )
 
 
@@ -39,7 +46,9 @@ def maybe_compress(agent: Agent) -> None:
     tail = agent.memory[split:]
 
     msg = chat("\n".join(head), system=_COMPRESSION_SYSTEM)
-    summary = (msg.content or "").strip()
+    # 单行化:LLM 不论塞 \n\n 段落还是 - bullet,都压平成一行。
+    # memory 单条 = 单行是 prompts.py 渲染逻辑的隐式契约。
+    summary = " ".join((msg.content or "").split())
     if not summary:
         # LLM 没给东西就别动 memory,等下一拍再试,反正不变式没破。
         return
