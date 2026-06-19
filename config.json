@@ -11,7 +11,7 @@
     }
   },
   "simulation": {
-    "num_turns": 5
+    "num_turns": 15
   },
   "persistence": {
     "enabled": true,
