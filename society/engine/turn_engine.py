@@ -6,6 +6,7 @@ from society.core.enums import ActionType, Visibility
 from society.engine.perception import perceive
 from society.agents.brain import decide
 from society.agents.memory import remember
+from society.agents.compression import maybe_compress
 
 
 def apply_event(world: WorldState, event: Event) -> list[Event]:
@@ -91,5 +92,6 @@ def run_turn(world: WorldState) -> None:
             for e in applied:
                 render_event(world, e)
         remember(agent, world, perception.visible_events, events)
+        maybe_compress(agent)
 
 

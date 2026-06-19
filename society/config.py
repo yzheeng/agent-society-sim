@@ -19,8 +19,14 @@ class LLMConfig:
 
 
 @dataclass(frozen=True)
+class CompressionConfig:
+    trigger_size: int   # memory 长到这个数就触发一次压缩
+    keep_recent: int    # 压缩后保留最近多少条原文不压
+
+
+@dataclass(frozen=True)
 class MemoryConfig:
-    recall_window: int
+    compression: CompressionConfig
 
 
 @dataclass(frozen=True)
@@ -55,7 +61,9 @@ def load_config(path: Path | None = None) -> Config:
     raw = json.loads((path or _DEFAULT_PATH).read_text(encoding="utf-8"))
     config = Config(
         llm=LLMConfig(**raw["llm"]),
-        memory=MemoryConfig(**raw["memory"]),
+        memory=MemoryConfig(
+            compression=CompressionConfig(**raw["memory"]["compression"]),
+        ),
         simulation=SimulationConfig(**raw["simulation"]),
         persistence=PersistenceConfig(**raw["persistence"]),
     )

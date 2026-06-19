@@ -5,7 +5,10 @@
     "api_key_env": "DEEPSEEK_API_KEY"
   },
   "memory": {
-    "recall_window": 100
+    "compression": {
+      "trigger_size": 150,
+      "keep_recent": 80
+    }
   },
   "simulation": {
     "num_turns": 5

@@ -1,14 +1,14 @@
-"""agent 的运行时记忆(MVP:短期记忆 = 第一人称经历流)。
+"""agent 的运行时记忆:短期记忆 = 第一人称经历流。
 
 只做两件事:
 - remember(): 回合末把"我这一拍的经历"追加进 agent.memory
-- recall():   取最近 N 条喂给 prompt(现在是截断;以后在这里接长期记忆压缩)
+- recall():   把 memory 整体交给 prompt 拼装
 
-不做持久化、不做长期记忆压缩——那些是后续。
+memory 的物理长度由 society.agents.compression.maybe_compress() 在回合末兜底——
+超出阈值时旧记忆会被滚动压成单条「梗概」塞回 memory[0],所以这里不再做截断。
 """
 from __future__ import annotations
 
-from society.config import load_config
 from society.core.models import Agent, Event, WorldState
 from society.core.enums import ActionType
 
@@ -54,13 +54,10 @@ def remember(
             agent.memory.append(f"我去了 {dest_name}")
 
 
-def recall(agent: Agent, max_items: int | None = None) -> list[str]:
-    """取出喂给 prompt 的短期记忆。
+def recall(agent: Agent) -> list[str]:
+    """把 agent 的整段 memory 交给 prompt 构建侧使用。
 
-    现在:直接截断,保留最近 max_items 条;不传则走 config.memory.recall_window。
-    以后升级长期记忆时,**只改这个函数**——把超出窗口的旧记忆压缩成摘要
-    拼在返回结果前面,prompt 构建那边一行都不用动。这是预留的升级口子。
+    memory 物理长度已由 compression.maybe_compress() 在回合末控制——头部可能是
+    一条「梗概」滚动摘要,其余是未压缩的最近原文。这里不做截断、不做裁剪。
     """
-    if max_items is None:
-        max_items = load_config().memory.recall_window
-    return agent.memory[-max_items:]
+    return list(agent.memory)
