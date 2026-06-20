@@ -7,6 +7,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from .enums import ActionType, Visibility
+from .clock import Calendar
 
 @dataclass
 class Location:
@@ -113,21 +114,25 @@ class Agent:
 
 @dataclass
 class WorldState:
-    """整个世界的唯一事实来源。"""
+    """整个世界的唯一事实来源。
+
+    calendar 由 scenario 装配时挂上,不持久化——scenario 代码是它的 source of truth,
+    每次 load 后由调用方重新挂回去。
+    """
     tick: int = 0
-    days_until_deadline: int = 7
     agents: dict[str, Agent] = field(default_factory=dict)
     locations: dict[str, Location] = field(default_factory=dict)
     event_log: list[Event] = field(default_factory=list)
+    calendar: Calendar | None = None
 
     def agents_at(self, location_id: str) -> list[Agent]:
         """某地点此刻在场的 agent —— 下一步的感知过滤会用到它。"""
         return [a for a in self.agents.values() if a.location_id == location_id]
 
     def to_meta_dict(self) -> dict:
-        """只 dump 元状态(tick / deadline / locations);agents 和 event_log 分文件存。"""
+        """只 dump 元状态(tick / locations);agents 和 event_log 分文件存。
+        calendar 不存——它是 scenario 配置,由调用方重新挂上。"""
         return {
             "tick": self.tick,
-            "days_until_deadline": self.days_until_deadline,
             "locations": {lid: loc.to_dict() for lid, loc in self.locations.items()},
         }

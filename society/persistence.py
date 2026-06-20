@@ -91,7 +91,6 @@ def load_world() -> WorldState | None:
 
     return WorldState(
         tick=world_tick,
-        days_until_deadline=meta["days_until_deadline"],
         agents=agents,
         locations=locations,
         event_log=event_log,

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from society.core.models import Event, WorldState
 from society.core.enums import ActionType, Visibility
+from society.core.clock import is_terminal
 from society.engine.perception import perceive
 from society.agents.brain import decide
 from society.agents.memory import remember
@@ -79,7 +80,12 @@ def run_turn(world: WorldState) -> None:
 
     sequential 模型:每人落子后立刻写回 event_log,
     因此后行动者的 perceive 能切到本回合先行动者刚说的 PUBLIC 事件。
+
+    若 calendar 已走到终局,直接打印终局事件并返回——不再推进 tick、不再决策。
     """
+    if world.calendar is not None and is_terminal(world.tick + 1, world.calendar):
+        print(f"\n[终局] {world.calendar.terminal_event}")
+        return
     world.tick += 1
     print(f"\n===== tick {world.tick} =====")
     ## 逐人处理:perceive 的边界是"自我上次动作之后",所以先行动者下回合

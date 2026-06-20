@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from society.engine.perception import Perception
 from society.core.enums import ActionType
+from society.core.clock import decompose, days_remaining
 
 
 SYSTEM_PROMPT = (
@@ -37,7 +38,18 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
     if me.plan:
         lines.append(f"我手头的打算:{me.plan}。")
 
-    # —— 2. 此刻四周 ——
+    # —— 2. 时间感(只翻译,不暴露机制:不说 phase / tick / 第几拍) ——
+    if perception.calendar is not None:
+        day, phase, _ = decompose(perception.tick, perception.calendar)
+        remaining = days_remaining(perception.tick, perception.calendar)
+        lines.append("")
+        lines.append(f"今天是第 {day} 天,{phase}。")
+        if remaining == 0:
+            lines.append(f"{perception.calendar.terminal_event}就在今日。")
+        else:
+            lines.append(f"距{perception.calendar.terminal_event}还有 {remaining} 天。")
+
+    # —— 3. 此刻四周 ——
     if perception.others_present:
         lines.append("")
         lines.append("我抬眼环顾四周——")
@@ -48,13 +60,13 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
         lines.append("")
         lines.append("此刻这儿就我一个,周围没别人。")
 
-    # —— 3. 我脑子里还回响着的 ——
+    # —— 4. 我脑子里还回响着的 ——
     if recalled:
         lines.append("")
         lines.append("我脑子里还回响着这些片段(只有我自己记得):")
         lines.extend(f"- {m}" for m in recalled)
 
-    # —— 4. 此刻——只在确有可感知的事件时才铺;无事发生就不要硬塞"安静"
+    # —— 5. 此刻——只在确有可感知的事件时才铺;无事发生就不要硬塞"安静"
     #              ——以免让 LLM 误读成"大家在等我开口"的张力。
     if perception.visible_events:
         id_to_name = {other.id: other.name for other in perception.others_present}
@@ -71,7 +83,7 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
                 # content 已是模板化的"X 离开了,去往 Y" 或 "X 来到了 Y"
                 lines.append(f"我看见{e.content}")
 
-    # —— 5. 我此刻知道还能去的地方(供 move 工具参考;tools 那边也用 enum 锁死了合法值) ——
+    # —— 6. 我此刻知道还能去的地方(供 move 工具参考;tools 那边也用 enum 锁死了合法值) ——
     if perception.location_catalog:
         here_id = me.location_id
         lines.append("")

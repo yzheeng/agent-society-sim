@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from society.core.clock import Calendar, days_remaining
 from society.core.models import Agent, Location, WorldState
 
 
 def build_triangle_world() -> WorldState:
+    calendar = Calendar(
+        total_days=5,
+        phases=["早间", "午间", "放学后", "夜晚"],
+        ticks_per_phase=4,
+        terminal_event="文化祭开幕",
+    )
+
     locations = {
         "classroom": Location("classroom", "教室", "午休时三人一起吃午饭的地方,半公开,说什么都可能被听见"),
         "hallway": Location("hallway", "走廊", "来往穿行的过道,适合把人单独叫出去说两句"),
@@ -36,15 +44,15 @@ def build_triangle_world() -> WorldState:
     )
 
     return WorldState(
-        days_until_deadline=7,
         agents={a.id: a for a in (rin, sakura, yu)},
         locations=locations,
+        calendar=calendar,
     )
 
 
 if __name__ == "__main__":
     world = build_triangle_world()
-    print(f"世界已就绪:{len(world.agents)} 个 agent,距摊牌 {world.days_until_deadline} 天")
+    print(f"世界已就绪:{len(world.agents)} 个 agent,距{world.calendar.terminal_event} {days_remaining(world.tick, world.calendar)} 天")
     for a in world.agents.values():
         print(f"  - {a.name}({a.id})@ {a.location_id} | 公开:{a.public_persona}")
     print("教室此刻在场:", [a.name for a in world.agents_at("classroom")])

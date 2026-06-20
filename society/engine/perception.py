@@ -4,6 +4,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 
+from society.core.clock import Calendar
 from society.core.models import Agent, Event, Location, WorldState
 from society.core.enums import Visibility
 
@@ -14,6 +15,8 @@ class Perception:
     visible_events: list[Event] = field(default_factory=list)  # 它能看见的公开事件
     others_present: list[Agent] = field(default_factory=list)  # 同地点还有谁在场
     location_catalog: dict[str, Location] = field(default_factory=dict)  # 我此刻知道还能去的地方
+    calendar: Calendar | None = None   # 世界时间结构(prompt 层负责翻译成时段感)
+    tick: int = 0                  # 当前 tick,配合 calendar 推导"今天是第几天/哪个时段"
 
 
 def perceive(world: WorldState, agent: Agent) -> Perception:
@@ -47,4 +50,6 @@ def perceive(world: WorldState, agent: Agent) -> Perception:
         visible_events=visible_events,
         others_present=others_present,
         location_catalog=world.locations,
+        calendar=world.calendar,
+        tick=world.tick,
     )
