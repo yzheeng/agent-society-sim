@@ -38,3 +38,7 @@ data/
 # --- 操作系统 ---
 .DS_Store
 Thumbs.db
+
+# --- file ---
+content/scenarios/graduation_trip.py
+content/scenarios/test.py

@@ -7,15 +7,32 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+
+
+@dataclass(frozen=True)
+class LLMProfile:
+    model: str
+    base_url: str
+    api_key_env: str | None = None  # 本地模型(如 LM Studio)可省略
+    # 透传给 chat.completions.create 的采样参数(temperature / top_p / presence_penalty / max_tokens 等)。
+    # 不同 profile 各管各的:本地小模型要压复读,远端 SaaS 用默认就行。
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class LLMConfig:
-    model: str
-    base_url: str
-    api_key_env: str
+    active: str
+    profiles: dict[str, LLMProfile]
+
+    def current(self) -> LLMProfile:
+        if self.active not in self.profiles:
+            raise ValueError(
+                f"llm.active='{self.active}' 不在 profiles 里,可选: {list(self.profiles)}"
+            )
+        return self.profiles[self.active]
 
 
 @dataclass(frozen=True)
@@ -60,7 +77,12 @@ def load_config(path: Path | None = None) -> Config:
 
     raw = json.loads((path or _DEFAULT_PATH).read_text(encoding="utf-8"))
     config = Config(
-        llm=LLMConfig(**raw["llm"]),
+        llm=LLMConfig(
+            active=raw["llm"]["active"],
+            profiles={
+                name: LLMProfile(**p) for name, p in raw["llm"]["profiles"].items()
+            },
+        ),
         memory=MemoryConfig(
             compression=CompressionConfig(**raw["memory"]["compression"]),
         ),

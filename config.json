@@ -1,8 +1,23 @@
 {
   "llm": {
-    "model": "deepseek-v4-flash",
-    "base_url": "https://api.deepseek.com",
-    "api_key_env": "DEEPSEEK_API_KEY"
+    "active": "remote",
+    "profiles": {
+      "remote": {
+        "model": "deepseek-v4-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_key_env": "DEEPSEEK_API_KEY"
+      },
+      "local": {
+        "model": "qwen3.6-35b-a3b",
+        "base_url": "http://localhost:1234/v1",
+        "params": {
+          "temperature": 0.7,
+          "top_p": 0.8,
+          "presence_penalty": 1.5,
+          "max_tokens": 2048
+        }
+      }
+    }
   },
   "memory": {
     "compression": {
@@ -11,7 +26,7 @@
     }
   },
   "simulation": {
-    "num_turns": 15
+    "num_turns": 5
   },
   "persistence": {
     "enabled": true,

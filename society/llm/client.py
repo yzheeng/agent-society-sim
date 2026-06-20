@@ -12,12 +12,16 @@ from society.config import load_config
 
 load_dotenv()
 
-_cfg = load_config().llm
-_api_key = os.environ.get(_cfg.api_key_env)
-if not _api_key:
-    raise RuntimeError(f"缺少 {_cfg.api_key_env},请在项目根目录的 .env 里设置")
+_profile = load_config().llm.current()
 
-_client = OpenAI(api_key=_api_key, base_url=_cfg.base_url)
+if _profile.api_key_env:
+    _api_key = os.environ.get(_profile.api_key_env)
+    if not _api_key:
+        raise RuntimeError(f"缺少 {_profile.api_key_env},请在项目根目录的 .env 里设置")
+else:
+    _api_key = "not-needed"  # LM Studio 等本地服务不校验 key,占位即可
+
+_client = OpenAI(api_key=_api_key, base_url=_profile.base_url)
 
 
 def chat(
@@ -35,7 +39,8 @@ def chat(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    kwargs: dict = {"model": _cfg.model, "messages": messages, "stream": False}
+    # profile.params 打底,核心字段(model / messages / stream)放右边后写,确保不被覆盖。
+    kwargs: dict = {**_profile.params, "model": _profile.model, "messages": messages, "stream": False}
     if tools:
         kwargs["tools"] = tools
         # 注:不传 tool_choice ——DeepSeek thinking 模式下传 "required" 会 400。
