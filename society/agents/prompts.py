@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from society.engine.perception import Perception
+from society.core.perception import Perception
 from society.core.enums import ActionType
 from society.core.models import WORLD_ACTOR
 from society.core.clock import decompose, days_remaining

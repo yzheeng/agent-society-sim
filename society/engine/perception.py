@@ -1,22 +1,14 @@
 """
-感知层:agent 这回合"能看见什么
+感知层:把当前 WorldState 投影成某个 agent 的 Perception。
+
+Perception 这个【输入契约】数据类住在 society.core.perception(那里有它为何下沉
+到 core 的说明);本模块只留 perceive() 这个【装配逻辑】。
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
 
-from society.core.clock import Calendar
-from society.core.models import Agent, Event, Location, WorldState
+from society.core.models import Agent, WorldState
 from society.core.enums import Visibility
-
-
-@dataclass
-class Perception:
-    self_agent: Agent              # 它自己(私密层在这里面:goal / secret / plan)
-    visible_events: list[Event] = field(default_factory=list)  # 它能看见的公开事件
-    others_present: list[Agent] = field(default_factory=list)  # 同地点还有谁在场
-    location_catalog: dict[str, Location] = field(default_factory=dict)  # 我此刻知道还能去的地方
-    calendar: Calendar | None = None   # 世界时间结构(prompt 层负责翻译成时段感)
-    tick: int = 0                  # 当前 tick,配合 calendar 推导"今天是第几天/哪个时段"
+from society.core.perception import Perception
 
 
 def perceive(world: WorldState, agent: Agent) -> Perception:

@@ -8,7 +8,7 @@
 """
 from __future__ import annotations
 
-from society.engine.perception import Perception
+from society.core.perception import Perception
 
 
 def build_tools(perception: Perception) -> list[dict]:

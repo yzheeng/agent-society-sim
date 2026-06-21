@@ -7,7 +7,7 @@ import json
 
 from society.core.models import Event
 from society.core.enums import ActionType, Visibility
-from society.engine.perception import Perception
+from society.core.perception import Perception
 from society.llm.client import chat
 from society.agents.prompts import SYSTEM_PROMPT, build_user_prompt
 from society.agents.tools import build_tools
