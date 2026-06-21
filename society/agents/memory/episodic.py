@@ -4,7 +4,7 @@
 - remember(): 回合末把"我这一拍的经历"追加进 agent.memory
 - recall():   把 memory 整体交给 prompt 拼装
 
-memory 的物理长度由 society.agents.compression.maybe_compress() 在回合末兜底——
+memory 的物理长度由 society.agents.memory.compression.maybe_compress() 在回合末兜底——
 超出阈值时旧记忆会被滚动压成单条「梗概」塞回 memory[0],所以这里不再做截断。
 """
 from __future__ import annotations

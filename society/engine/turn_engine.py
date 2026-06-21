@@ -7,8 +7,7 @@ from society.core.clock import is_terminal
 from society.engine.perception import perceive
 from society.engine.director import Director
 from society.agents.brain import decide
-from society.agents.memory import remember
-from society.agents.compression import maybe_compress
+from society.agents.memory import remember, maybe_compress
 from society.stream.signals import (
     SimSink,
     TickStarted,
