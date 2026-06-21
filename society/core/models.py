@@ -84,11 +84,20 @@ class Agent:
     secret: str                # 被戳破会出事的东西
     plan: str = ""             # 当前短期打算,每回合可更新
 
+    # —— 信念:导演"植入"的持久认知,长留在自我里,每拍都给行为染色。
+    #    与 impulses(转瞬冲动)相对,这是【持久】的——进 to_dict/from_dict,跨重启存活。
+    beliefs: list[str] = field(default_factory=list)
+
     # —— 关系:对其他 agent 的好感 / 信任,-100..100 —— 这就是"摩擦"的量化
     relationships: dict[str, int] = field(default_factory=dict)
 
     # —— 记忆:先用最朴素的字符串列表,跑通后再升级成你那套短/长期记忆 ——
     memory: list[str] = field(default_factory=list)
+
+    # —— 临时冲动:导演"私语"塞进来的念头,只在【下一次行动】时以"突如其来的念头"
+    #    醒目浮现,消费即清。刻意【不持久化】(不进 to_dict/from_dict)——它是转瞬的
+    #    此刻冲动,不是长期记忆,跨重启丢失可接受。
+    impulses: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -99,6 +108,7 @@ class Agent:
             "private_goal": self.private_goal,
             "secret": self.secret,
             "plan": self.plan,
+            "beliefs": list(self.beliefs),
             "relationships": dict(self.relationships),
             "memory": list(self.memory),
         }
@@ -113,6 +123,7 @@ class Agent:
             private_goal=d["private_goal"],
             secret=d["secret"],
             plan=d.get("plan", ""),
+            beliefs=list(d.get("beliefs", [])),
             relationships=dict(d.get("relationships", {})),
             memory=list(d.get("memory", [])),
         )

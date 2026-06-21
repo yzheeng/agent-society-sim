@@ -26,7 +26,10 @@ def _normalize(s: str) -> str:
 def decide(perception: Perception, tick: int) -> list[Event]:
     me = perception.self_agent
     recalled = recall(me)
-    user_prompt = build_user_prompt(perception, recalled)
+    # 导演私语塞进来的冲动:读出来交给 prompt 醒目呈现,消费即清(只影响这一次行动)。
+    impulses = list(me.impulses)
+    me.impulses.clear()
+    user_prompt = build_user_prompt(perception, recalled, impulses)
     tools = build_tools(perception)
 
     msg = chat(user_prompt, system=SYSTEM_PROMPT, tools=tools)
