@@ -8,6 +8,13 @@ from society.engine.perception import perceive
 from society.agents.brain import decide
 from society.agents.memory import remember
 from society.agents.compression import maybe_compress
+from society.stream.signals import (
+    SimSink,
+    TickStarted,
+    WorldEventEmitted,
+    TerminalReached,
+    make_timestamp,
+)
 
 
 def apply_event(world: WorldState, event: Event) -> list[Event]:
@@ -69,25 +76,22 @@ def _apply_move(world: WorldState, event: Event) -> list[Event]:
     return [departure, arrival]
 
 
-def render_event(world: WorldState, event: Event) -> None:
-    """上帝视角:单行打印一条事件,便于调试扫读。"""
-    name = world.agents[event.actor_id].name
-    print(f"  {name} [{event.type.value}] {event.content}")
-
-
-def run_turn(world: WorldState) -> None:
-    """一个回合:每个 agent 依次 感知→决策→落子→渲染→沉淀记忆。
+def run_turn(world: WorldState, sink: SimSink) -> None:
+    """一个回合:每个 agent 依次 感知→决策→落子→发信号→沉淀记忆。
 
     sequential 模型:每人落子后立刻写回 event_log,
     因此后行动者的 perceive 能切到本回合先行动者刚说的 PUBLIC 事件。
 
-    若 calendar 已走到终局,直接打印终局事件并返回——不再推进 tick、不再决策。
+    若 calendar 已走到终局,直接发 TerminalReached 并返回——不再推进 tick、不再决策。
     """
     if world.calendar is not None and is_terminal(world.tick + 1, world.calendar):
-        print(f"\n[终局] {world.calendar.terminal_event}")
+        sink.emit(TerminalReached(
+            time=make_timestamp(world),
+            terminal_event=world.calendar.terminal_event,
+        ))
         return
     world.tick += 1
-    print(f"\n===== tick {world.tick} =====")
+    sink.emit(TickStarted(time=make_timestamp(world)))
     ## 逐人处理:perceive 的边界是"自我上次动作之后",所以先行动者下回合
     ## 自然能在 perception 里捡到后行动者本回合的发言,不需要回合末额外 pass。
     for agent in world.agents.values():
@@ -96,7 +100,12 @@ def run_turn(world: WorldState) -> None:
         for event in events:
             applied = apply_event(world, event)
             for e in applied:
-                render_event(world, e)
+                sink.emit(WorldEventEmitted(
+                    time=make_timestamp(world),
+                    event=e,
+                    actor_name=world.agents[e.actor_id].name,
+                    location_name=world.locations[e.location_id].name,
+                ))
         remember(agent, world, perception.visible_events, events)
         maybe_compress(agent)
 

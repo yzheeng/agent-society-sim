@@ -2,6 +2,7 @@ from __future__ import annotations
 from society.config import load_config
 from society.engine.turn_engine import run_turn
 from society.persistence import load_world, save_world
+from ui.cli import CLISink
 from content.scenarios.test import build_test_world
 
 def main() -> None:
@@ -12,8 +13,9 @@ def main() -> None:
     world = load_world() or scenario_world
     if world.calendar is None:
         world.calendar = scenario_world.calendar
+    sink = CLISink()
     for _ in range(load_config().simulation.num_turns):
-        run_turn(world)
+        run_turn(world, sink)
         save_world(world)
 
 
