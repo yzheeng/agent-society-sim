@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from society.engine.perception import Perception
 from society.core.enums import ActionType
+from society.core.models import WORLD_ACTOR
 from society.core.clock import decompose, days_remaining
 
 
@@ -74,6 +75,10 @@ def build_user_prompt(perception: Perception, recalled: list[str]) -> str:
         lines.append("")
         lines.append("就在此刻——")
         for e in perception.visible_events:
+            if e.actor_id == WORLD_ACTOR:
+                # 外部火种:不是谁说的、谁做的,是世界本身发生的事,当旁白直接铺。
+                lines.append(e.content)
+                continue
             speaker = id_to_name.get(e.actor_id, e.actor_id)
             if e.type == ActionType.SPEAK:
                 lines.append(f"我听见{speaker}说:「{e.content}」")

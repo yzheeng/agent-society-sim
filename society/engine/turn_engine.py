@@ -5,6 +5,7 @@ from society.core.models import Event, WorldState
 from society.core.enums import ActionType, Visibility
 from society.core.clock import is_terminal
 from society.engine.perception import perceive
+from society.engine.director import Director
 from society.agents.brain import decide
 from society.agents.memory import remember
 from society.agents.compression import maybe_compress
@@ -76,11 +77,14 @@ def _apply_move(world: WorldState, event: Event) -> list[Event]:
     return [departure, arrival]
 
 
-def run_turn(world: WorldState, sink: SimSink) -> None:
-    """一个回合:每个 agent 依次 感知→决策→落子→发信号→沉淀记忆。
+def run_turn(world: WorldState, sink: SimSink, director: Director | None = None) -> None:
+    """一个回合:(导演注入火种 →)每个 agent 依次 感知→决策→落子→发信号→沉淀记忆。
 
     sequential 模型:每人落子后立刻写回 event_log,
     因此后行动者的 perceive 能切到本回合先行动者刚说的 PUBLIC 事件。
+
+    director 在 tick 自增后、所有 agent 行动前注入外部火种:火种作为 PUBLIC 事件
+    先落进 event_log,本回合在场 agent 的 perceive 就能把它当"此刻"拾到。
 
     若 calendar 已走到终局,直接发 TerminalReached 并返回——不再推进 tick、不再决策。
     """
@@ -92,6 +96,17 @@ def run_turn(world: WorldState, sink: SimSink) -> None:
         return
     world.tick += 1
     sink.emit(TickStarted(time=make_timestamp(world)))
+
+    if director is not None:
+        for event in director.sparks_for(world):
+            world.event_log.append(event)
+            sink.emit(WorldEventEmitted(
+                time=make_timestamp(world),
+                event=event,
+                actor_name="旁白",
+                location_name=world.locations[event.location_id].name,
+            ))
+
     ## 逐人处理:perceive 的边界是"自我上次动作之后",所以先行动者下回合
     ## 自然能在 perception 里捡到后行动者本回合的发言,不需要回合末额外 pass。
     for agent in world.agents.values():

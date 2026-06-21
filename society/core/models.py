@@ -9,6 +9,12 @@ from dataclasses import dataclass, field
 from .enums import ActionType, Visibility
 from .clock import Calendar
 
+# 导演层注入的"外部火种"事件的 actor_id。不对应任何 agent——
+# 它代表"世界本身"发生的事(手机震动、撞见、广播通知……),
+# 由 perceive() 的 PUBLIC + 同 location 过滤自然送达在场 agent。
+# 渲染侧(prompts / memory)凭这个哨兵把它当旁白处理,不去 agents 里查名字。
+WORLD_ACTOR = "_world_"
+
 @dataclass
 class Location:
     id: str
