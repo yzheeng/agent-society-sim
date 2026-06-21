@@ -4,13 +4,16 @@ from society.engine.director import Director
 from society.persistence import load_world
 from ui.cli import CLISink
 from ui.console import Console
-from content.scenarios.test import build_test_world
+from content.loader import load_scenario
+
+# 要跑哪个场景:对应 content/scenarios/<SCENARIO>.yaml
+SCENARIO = "sample"
 
 def main() -> None:
     # scenario 是 calendar 的 source of truth(不持久化),先建出来:
     # - 无存档:直接用它作为初始 world
     # - 有存档:用存档恢复 tick / agents / event_log,calendar 从 scenario 重新挂上
-    scenario_world = build_test_world()
+    scenario_world = load_scenario(SCENARIO)
     world = load_world() or scenario_world
     if world.calendar is None:
         world.calendar = scenario_world.calendar
