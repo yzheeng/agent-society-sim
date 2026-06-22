@@ -7,7 +7,7 @@ from ui.console import Console
 from content.loader import load_scenario
 
 # 要跑哪个场景:对应 content/scenarios/<SCENARIO>.yaml
-SCENARIO = "sample"
+SCENARIO = "test"
 
 def main() -> None:
     # scenario 是 calendar 的 source of truth(不持久化),先建出来:

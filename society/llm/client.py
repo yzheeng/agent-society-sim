@@ -2,6 +2,7 @@
 """
 from __future__ import annotations
 
+import inspect
 import os
 
 from openai import OpenAI
@@ -23,6 +24,10 @@ else:
 
 _client = OpenAI(api_key=_api_key, base_url=_profile.base_url)
 
+# SDK 的 create() 用显式签名,不认识的采样参数(如 top_k / min_p)直接传会抛 TypeError。
+# 这里取出签名认识的参数名,调用时据此把私有参数路由进 extra_body 透传给后端。
+_KNOWN_PARAMS = set(inspect.signature(_client.chat.completions.create).parameters)
+
 
 def chat(
     prompt: str,
@@ -39,8 +44,13 @@ def chat(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    # profile.params 打底,核心字段(model / messages / stream)放右边后写,确保不被覆盖。
-    kwargs: dict = {**_profile.params, "model": _profile.model, "messages": messages, "stream": False}
+    # profile.params 打底:SDK 签名认识的留在顶层,其余(top_k / min_p 等)进 extra_body 透传。
+    extra_body = {k: v for k, v in _profile.params.items() if k not in _KNOWN_PARAMS}
+    kwargs: dict = {k: v for k, v in _profile.params.items() if k in _KNOWN_PARAMS}
+    # 核心字段(model / messages / stream)放右边后写,确保不被覆盖。
+    kwargs.update(model=_profile.model, messages=messages, stream=False)
+    if extra_body:
+        kwargs["extra_body"] = extra_body
     if tools:
         kwargs["tools"] = tools
         # 注:不传 tool_choice ——DeepSeek thinking 模式下传 "required" 会 400。

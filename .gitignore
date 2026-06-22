@@ -40,5 +40,4 @@ data/
 Thumbs.db
 
 # --- file ---
-content/scenarios/graduation_trip.py
-content/scenarios/test.py
+content/scenarios/test.yaml
