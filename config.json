@@ -1,6 +1,6 @@
 {
   "llm": {
-    "active": "local",
+    "active": "remote",
     "profiles": {
       "remote": {
         "model": "deepseek-v4-flash",
@@ -25,6 +25,10 @@
     "compression": {
       "trigger_size": 30,
       "keep_recent": 10
+    },
+    "reflection": {
+      "interval": 12,
+      "max_beliefs": 8
     }
   },
   "simulation": {

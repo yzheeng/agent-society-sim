@@ -42,8 +42,15 @@ class CompressionConfig:
 
 
 @dataclass(frozen=True)
+class ReflectionConfig:
+    interval: int       # 每隔多少拍反思一次(tick % interval == 0 触发;<=0 关闭)
+    max_beliefs: int    # 反思后 beliefs 封顶条数,防无限增长
+
+
+@dataclass(frozen=True)
 class MemoryConfig:
     compression: CompressionConfig
+    reflection: ReflectionConfig
 
 
 @dataclass(frozen=True)
@@ -85,6 +92,7 @@ def load_config(path: Path | None = None) -> Config:
         ),
         memory=MemoryConfig(
             compression=CompressionConfig(**raw["memory"]["compression"]),
+            reflection=ReflectionConfig(**raw["memory"]["reflection"]),
         ),
         simulation=SimulationConfig(**raw["simulation"]),
         persistence=PersistenceConfig(**raw["persistence"]),

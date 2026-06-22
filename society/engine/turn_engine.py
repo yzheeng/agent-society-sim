@@ -7,7 +7,7 @@ from society.core.clock import is_terminal
 from society.engine.perception import perceive
 from society.engine.director import Director
 from society.agents.brain import decide
-from society.agents.memory import remember, maybe_compress
+from society.agents.memory import remember, maybe_compress, maybe_reflect
 from society.stream.signals import (
     SimSink,
     TickStarted,
@@ -121,6 +121,8 @@ def run_turn(world: WorldState, sink: SimSink, director: Director | None = None)
                     location_name=world.locations[e.location_id].name,
                 ))
         remember(agent, world, perception.visible_events, events)
+        # 反思在压缩之前:趁记忆被溶解前,从最丰富的那版经历里蒸馏信念。
+        maybe_reflect(agent, world)
         maybe_compress(agent)
 
 
