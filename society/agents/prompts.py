@@ -111,8 +111,14 @@ def build_user_prompt(
         lines.append("")
         lines.append("我抬眼环顾四周——")
         for other in perception.others_present:
-            lines.append(f"{other.name}也在,在所有人眼里是「{other.public_persona}」。")
-        lines.append("我跟他们打交道,看到的也就是他们摆给所有人看的那一面。")
+            line = f"{other.name}也在,在所有人眼里是「{other.public_persona}」。"
+            # 私下印象:由反思从过往经历里长出来(impressions),只有我自己知道,
+            # 叠在对方的公开面之上——人前一套、我心里另有掂量。
+            impression = me.impressions.get(other.id)
+            if impression:
+                line += f"——可打过这些交道,我私下里觉得:{impression}"
+            lines.append(line)
+        lines.append("我跟他们打交道,看到的是他们摆给所有人看的那一面,可我心里自有一杆秤。")
     else:
         lines.append("")
         lines.append("此刻这儿就我一个,周围没别人。")

@@ -91,6 +91,10 @@ class Agent:
     # —— 关系:对其他 agent 的好感 / 信任,-100..100 —— 这就是"摩擦"的量化
     relationships: dict[str, int] = field(default_factory=dict)
 
+    # —— 印象:对其他 agent 的一句话私下看法(定性),由反思从经历里长出来。
+    #    与 relationships(好感数值)互补:一个是"我觉得他是个什么人",一个是"我对他几分亲疏"。
+    impressions: dict[str, str] = field(default_factory=dict)
+
     # —— 记忆:先用最朴素的字符串列表,跑通后再升级成你那套短/长期记忆 ——
     memory: list[str] = field(default_factory=list)
 
@@ -110,6 +114,7 @@ class Agent:
             "plan": self.plan,
             "beliefs": list(self.beliefs),
             "relationships": dict(self.relationships),
+            "impressions": dict(self.impressions),
             "memory": list(self.memory),
         }
 
@@ -125,6 +130,7 @@ class Agent:
             plan=d.get("plan", ""),
             beliefs=list(d.get("beliefs", [])),
             relationships=dict(d.get("relationships", {})),
+            impressions=dict(d.get("impressions", {})),
             memory=list(d.get("memory", [])),
         )
 
