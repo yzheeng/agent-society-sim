@@ -152,6 +152,9 @@ def build_user_prompt(
                 lines.append(f"我听见{speaker}说:「{e.content}」")
             elif e.type == ActionType.ACT:
                 lines.append(f"我看见{speaker}:{e.content}")
+            elif e.type == ActionType.SILENCE:
+                # 沉默无 content,固定模板:旁人察觉得到"他没接话",但读不到他心里。
+                lines.append(f"我注意到{speaker}没作声")
             elif e.type == ActionType.MOVE:
                 # content 已是模板化的"X 离开了,去往 Y" 或 "X 来到了 Y"
                 lines.append(f"我看见{e.content}")

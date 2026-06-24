@@ -21,7 +21,9 @@ def apply_event(world: WorldState, event: Event) -> list[Event]:
     """把一个 event 真正落进世界。返回真正进入 event_log 的事件列表
     (大多数情况是 [event] 本身;MOVE 会展开成 [离场, 到场] 两条)。"""
     match event.type:
-        case ActionType.SPEAK | ActionType.THINK:
+        case ActionType.SPEAK | ActionType.THINK | ActionType.SILENCE:
+            # SILENCE 是 PUBLIC 的外显姿态:落进 log,可见性交给 perceive 的
+            # PUBLIC + 同 location 过滤,让在场者察觉"这人没作声"。
             world.event_log.append(event)
             return [event]
         case ActionType.PLAN:

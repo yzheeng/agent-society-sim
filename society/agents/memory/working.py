@@ -41,6 +41,8 @@ def remember(
             agent.memory.append(f"我听到 {speaker} 说:「{e.content}」")
         elif e.type == ActionType.ACT:
             agent.memory.append(f"我看到 {speaker}:{e.content}")
+        elif e.type == ActionType.SILENCE:
+            agent.memory.append(f"我注意到 {speaker} 没作声")
         elif e.type == ActionType.MOVE:
             # content 已是模板渲染好的"X 离开了,去往 Y" 或 "X 来了"
             agent.memory.append(f"我看到 {e.content}")
@@ -54,6 +56,8 @@ def remember(
             agent.memory.append(f"我盘算着:「{e.content}」")
         elif e.type == ActionType.ACT:
             agent.memory.append(f"我做了:{e.content}")
+        elif e.type == ActionType.SILENCE:
+            agent.memory.append("我把话咽了回去,当众没作声")
         elif e.type == ActionType.MOVE:
             # 自己永远 perceive 不到自己的两条 MOVE,得在这里给自己留一条"换地"的痕迹
             dest = world.locations.get(e.destination_id) if e.destination_id else None

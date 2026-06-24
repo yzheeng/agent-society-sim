@@ -37,6 +37,11 @@ def build_tools(perception: Perception) -> list[dict]:
         fn("think", "我此刻心里默默掠过的念头,谁也听不到", string_content),
         fn("plan",  "我此刻心里盘算的下一步——眼前心思,等会儿会随情况再变。一回合至多一条。", string_content),
         fn("act",   "我此刻做出来的动作——在场的人都看得见的身体举动或对身边东西的摆弄,不是开口说话", string_content),
+        fn("silence",
+           "我此刻当众按下话头,什么也不说、不动——这不是没反应,是我有意把话咽回去、把动作收住。"
+           "在场的人会看见我沉默。只有当我此刻确实选择以静默来回应(忍着、僵着、不愿搭理、心虚不敢应)时才用它;"
+           "若我心里有任何想说想做的,就去 speak / act,别拿沉默搪塞。",
+           {"type": "object", "properties": {}, "required": []}),
         fn("move",  "我离开此地,去往别处。脚一旦迈出去就专心走,这一刻不能再 speak / act。",
             {"type": "object",
              "properties": {

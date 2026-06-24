@@ -23,8 +23,8 @@
   },
   "memory": {
     "compression": {
-      "trigger_size": 30,
-      "keep_recent": 10
+      "trigger_size": 60,
+      "keep_recent": 20
     },
     "reflection": {
       "interval": 12,

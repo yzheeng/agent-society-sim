@@ -9,8 +9,9 @@ class Visibility(Enum):
 
 class ActionType(Enum):
     """agent 一回合能做的动作种类。"""
-    SPEAK = "speak"  # 说话
-    MOVE = "move"    # 移动到别的地点
-    ACT = "act"      # 对世界做点什么(贴海报、送东西……)
-    THINK = "think"  # 内心活动 —— 永远是 PRIVATE
-    PLAN = "plan"    # 调整自己的"眼下打算" —— 永远是 PRIVATE,落子时写回 agent.plan
+    SPEAK = "speak"      # 说话
+    MOVE = "move"        # 移动到别的地点
+    ACT = "act"          # 对世界做点什么(贴海报、送东西……)
+    SILENCE = "silence"  # 当众按下话头、不作声 —— 一种外显姿态,PUBLIC,在场的人看得见
+    THINK = "think"      # 内心活动 —— 永远是 PRIVATE
+    PLAN = "plan"        # 调整自己的"眼下打算" —— 永远是 PRIVATE,落子时写回 agent.plan
