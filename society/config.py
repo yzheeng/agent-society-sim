@@ -7,9 +7,40 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
+
+# 加载 .env,确保下面的 ${VAR} 占位符解析能拿到真实值。
+# 与 llm/client.py 各自调一次,load_dotenv 幂等、互不影响,谁先 import 都不漏。
+load_dotenv()
+
+# config.json 里凡是 "${VAR}" 形式的字符串,都从环境变量(.env)取真实值。
+# 这样 model / base_url / api_key 这类会换的东西只存在 .env,config.json 只留引用。
+_ENV_REF = re.compile(r"\$\{([^}]+)\}")
+
+
+def _resolve_env(obj: Any) -> Any:
+    """递归把 config 里的 ${VAR} 占位符替换成 .env 中的真实值,缺值即 fail-fast。"""
+    if isinstance(obj, str):
+        def _sub(m: re.Match[str]) -> str:
+            name = m.group(1)
+            val = os.environ.get(name)
+            if val is None:
+                raise RuntimeError(
+                    f"config 引用了环境变量 {name},但 .env / 环境里没有,请在项目根目录的 .env 里设置"
+                )
+            return val
+        return _ENV_REF.sub(_sub, obj)
+    if isinstance(obj, dict):
+        return {k: _resolve_env(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_resolve_env(v) for v in obj]
+    return obj
 
 
 @dataclass(frozen=True)
@@ -83,6 +114,7 @@ def load_config(path: Path | None = None) -> Config:
         return _cached
 
     raw = json.loads((path or _DEFAULT_PATH).read_text(encoding="utf-8"))
+    raw = _resolve_env(raw)
     config = Config(
         llm=LLMConfig(
             active=raw["llm"]["active"],

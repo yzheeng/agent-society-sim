@@ -180,16 +180,16 @@ uv sync
 
 ### 配置 LLM
 
-在 `config.json` 的 `llm.active` 切换 profile:
+在 `config.json` 的 `llm.active` 切换 profile;模型 / 地址 / 密钥都用 `${变量名}` 从 `.env` 取真实值(复制 `.env.example` 为 `.env` 填入即可),换模型或换家只改 `.env`:
 
 ```jsonc
 {
   "llm": {
     "active": "remote",          // remote | local
     "profiles": {
-      "remote": { "model": "deepseek-v4-flash", "base_url": "https://api.deepseek.com",
-                  "api_key_env": "DEEPSEEK_API_KEY" },
-      "local":  { "model": "qwen3-30b-a3b", "base_url": "http://localhost:1234/v1",
+      "remote": { "model": "${REMOTE_MODEL}", "base_url": "${REMOTE_BASE_URL}",
+                  "api_key_env": "REMOTE_API_KEY" },
+      "local":  { "model": "${LOCAL_MODEL}", "base_url": "${LOCAL_BASE_URL}",
                   "params": { "temperature": 0.7, "presence_penalty": 1.0 } }
     }
   }
