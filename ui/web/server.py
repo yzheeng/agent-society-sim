@@ -143,8 +143,8 @@ async def api_pause() -> JSONResponse:
 
 
 @app.post("/api/step")
-async def api_step(k: int = 1) -> JSONResponse:
-    _rt.sim.step(k)
+async def api_step() -> JSONResponse:
+    _rt.sim.step()
     return JSONResponse(_rt.sim.status())
 
 

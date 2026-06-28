@@ -34,7 +34,8 @@ class SimLoop:
         self.c = conductor
         self._lock = threading.Lock()
         self._running = False       # 自动连跑
-        self._step_budget = 0       # 待执行的手动步数
+        self._step_budget = 0       # 待执行的手动步数(幂等:最多 1)
+        self._busy = False          # 正在跑某一拍 —— 用于 step 幂等去重
         self._stop = False          # 关闭信号
         self._wake = threading.Event()
         # 待执行的 world 写操作(注入等),由后台线程在拍间 drain。
@@ -58,10 +59,13 @@ class SimLoop:
             self._running = False
             self._step_budget = 0
 
-    def step(self, k: int = 1) -> None:
-        """补充 k 拍预算,跑完即停。"""
+    def step(self) -> None:
+        """请求步进一拍。【幂等】:已有步进在途(正在跑或已排队)、或处于自动模式时,
+        重复调用一律忽略 —— 连点「步进」也只走一拍,本拍跑完才接受下一次。"""
         with self._lock:
-            self._step_budget += max(1, k)
+            if self._busy or self._step_budget > 0 or self._running:
+                return
+            self._step_budget = 1
         self._wake.set()
 
     def stop(self) -> None:
@@ -92,6 +96,7 @@ class SimLoop:
             return {
                 "running": self._running,
                 "step_budget": self._step_budget,
+                "busy": self._busy,
                 "tick": self.c.world.tick,
                 "terminal": self.c.is_terminal(),
             }
@@ -132,7 +137,11 @@ class SimLoop:
                 continue
 
             # 真正的一拍:阻塞、慢,期间引擎经 sink 持续 emit signal。
+            # _busy 期间到来的 step 请求被幂等忽略,连点不堆积。
+            with self._lock:
+                self._busy = True
             self.c.step(1)
             with self._lock:
+                self._busy = False
                 if self._step_budget > 0:
                     self._step_budget -= 1
