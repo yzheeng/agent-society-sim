@@ -9,11 +9,22 @@
 - pause :停在当前拍跑完之后(LLM 阻塞不可中断,无法 token 级急停 —— 这是同步引擎的代价)
 - step k:补充 k 拍预算,跑完回到空闲
 
-空闲时线程 wait 在一个 Event 上(不忙等),被 run / step 唤醒。
+空闲时线程 wait 在一个 Event 上(不忙等),被 run / step / submit 唤醒。
+
+## 操作队列(注入等 world 写入的归口)
+
+注入(inject_fact/impulse/belief)会改 world,inject_belief 还会 save_world——
+而后台线程每拍也 save_world,两边并发写盘 + 共享模块级游标会出事。解法:让所有
+对 world 的写入都【只】发生在这个后台线程。asyncio 端经 submit() 把操作排进队列,
+线程在每轮循环顶部(拍间)drain 执行。submit 返回 concurrent.futures.Future,
+调用方可 asyncio.wrap_future 等它落定,拿到即时反馈。
 """
 from __future__ import annotations
 
+import queue
 import threading
+from concurrent.futures import Future
+from typing import Any, Callable
 
 from society.conductor import Conductor
 
@@ -26,6 +37,8 @@ class SimLoop:
         self._step_budget = 0       # 待执行的手动步数
         self._stop = False          # 关闭信号
         self._wake = threading.Event()
+        # 待执行的 world 写操作(注入等),由后台线程在拍间 drain。
+        self._pending: queue.Queue[tuple[Callable[[], Any], Future]] = queue.Queue()
         self._thread = threading.Thread(target=self._loop, name="sim-loop", daemon=True)
 
     def start(self) -> None:
@@ -56,6 +69,15 @@ class SimLoop:
         self._stop = True
         self._wake.set()
 
+    def submit(self, fn: Callable[[], Any]) -> Future:
+        """把一个 world 写操作排给后台线程,在拍间执行。返回 Future 供调用方等结果。
+
+        所有改 world 的动作都该走这里 —— 保证写入单线程化,与推进 / 落盘不打架。"""
+        fut: Future = Future()
+        self._pending.put((fn, fut))
+        self._wake.set()
+        return fut
+
     def status(self) -> dict:
         """当前运行态快照,供 REST 查询。"""
         with self._lock:
@@ -68,12 +90,27 @@ class SimLoop:
 
     # —— 后台线程主体 ——
 
+    def _drain(self) -> None:
+        """执行所有排队的 world 写操作。只在后台线程调用。"""
+        while True:
+            try:
+                fn, fut = self._pending.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                fut.set_result(fn())
+            except Exception as exc:  # 把异常透回提交方,不掀翻循环
+                fut.set_exception(exc)
+
     def _loop(self) -> None:
         while not self._stop:
+            # 先清掉待办写操作(注入等):保证所有 world 写入都在本线程、且先于本拍推进。
+            self._drain()
+
             with self._lock:
                 go = self._running or self._step_budget > 0
             if not go:
-                self._wake.wait(timeout=1.0)   # 空闲挂起,被 run / step 唤醒
+                self._wake.wait(timeout=1.0)   # 空闲挂起,被 run / step / submit 唤醒
                 self._wake.clear()
                 continue
 

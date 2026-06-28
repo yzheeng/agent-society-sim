@@ -9,7 +9,7 @@ god 开关,降解成前端可随时叠加的渲染图层。
 """
 from __future__ import annotations
 
-from society.core.models import Agent, Location
+from society.core.models import Agent, Location, WorldState, WORLD_ACTOR
 from society.stream.signals import (
     Signal,
     TickStarted,
@@ -57,6 +57,24 @@ def signal_to_dict(signal: Signal) -> dict:
                 "terminal_event": terminal_event,
             }
     raise TypeError(f"未知 Signal 类型:{type(signal)!r}")
+
+
+def event_entry(world: WorldState, event) -> dict:
+    """一条历史事件 → 带名字解析的 dict,供历史档案视图浏览整段 event_log。
+
+    在 Event.to_dict 基础上补 actor_name / location_name —— WORLD_ACTOR 渲染成
+    "旁白"(与引擎旁白注入一致);名字查不到时退回原 id,容错历史里已不存在的引用。
+    """
+    d = event.to_dict()
+    if event.actor_id == WORLD_ACTOR:
+        actor_name = "旁白"
+    else:
+        agent = world.agents.get(event.actor_id)
+        actor_name = agent.name if agent is not None else event.actor_id
+    loc = world.locations.get(event.location_id)
+    d["actor_name"] = actor_name
+    d["location_name"] = loc.name if loc is not None else event.location_id
+    return d
 
 
 def location_to_dict(loc: Location) -> dict:

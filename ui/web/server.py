@@ -18,12 +18,13 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from society.conductor import Conductor
 from society.engine.director import Director
 from society.persistence import load_world
 from content.loader import load_scenario
-from ui.web.serializers import agent_brief, agent_dossier, location_to_dict
+from ui.web.serializers import agent_brief, agent_dossier, event_entry, location_to_dict
 from ui.web.sim_loop import SimLoop
 from ui.web.ws_sink import ConnectionManager, WebSocketSink
 
@@ -126,6 +127,87 @@ async def api_agent(agent_id: str) -> JSONResponse:
     except KeyError:
         return JSONResponse({"error": f"没有角色 {agent_id}"}, status_code=404)
     return JSONResponse(agent_dossier(agent))
+
+
+# —— 注入(三个维度):经 sim.submit 排给后台线程,保证 world 写入单线程化 ——
+
+class _FactIn(BaseModel):
+    location_id: str
+    content: str
+
+
+class _AgentMsgIn(BaseModel):
+    agent_id: str
+    content: str
+
+
+# 注入排在拍间执行:若正赶上某拍在跑(LLM 阻塞),最长等它跑完。超时不算失败,
+# 操作仍会在下一次拍间隙被 drain 执行,只是这次请求先返回"已排队"。
+_INJECT_TIMEOUT = 120
+
+
+async def _submit_and_wait(fn) -> bool:
+    """把写操作排给模拟线程并等它落定。返回是否在超时内完成。"""
+    fut = _sim.submit(fn)
+    try:
+        await asyncio.wait_for(asyncio.wrap_future(fut), timeout=_INJECT_TIMEOUT)
+        return True
+    except asyncio.TimeoutError:
+        return False
+
+
+@app.post("/api/inject/fact")
+async def api_inject_fact(payload: _FactIn) -> JSONResponse:
+    content = payload.content.strip()
+    if payload.location_id not in _conductor.world.locations:
+        return JSONResponse({"error": "地点不存在"}, status_code=400)
+    if not content:
+        return JSONResponse({"error": "内容为空"}, status_code=400)
+    done = await _submit_and_wait(lambda: _conductor.inject_fact(payload.location_id, content))
+    return JSONResponse({"ok": True, "applied": done})
+
+
+@app.post("/api/inject/impulse")
+async def api_inject_impulse(payload: _AgentMsgIn) -> JSONResponse:
+    content = payload.content.strip()
+    if payload.agent_id not in _conductor.world.agents:
+        return JSONResponse({"error": "角色不存在"}, status_code=400)
+    if not content:
+        return JSONResponse({"error": "内容为空"}, status_code=400)
+    done = await _submit_and_wait(lambda: _conductor.inject_impulse(payload.agent_id, content))
+    return JSONResponse({"ok": True, "applied": done})
+
+
+@app.post("/api/inject/belief")
+async def api_inject_belief(payload: _AgentMsgIn) -> JSONResponse:
+    content = payload.content.strip()
+    if payload.agent_id not in _conductor.world.agents:
+        return JSONResponse({"error": "角色不存在"}, status_code=400)
+    if not content:
+        return JSONResponse({"error": "内容为空"}, status_code=400)
+    done = await _submit_and_wait(lambda: _conductor.inject_belief(payload.agent_id, content))
+    return JSONResponse({"ok": True, "applied": done})
+
+
+# —— 历史档案:浏览整段 event_log(= data/events.jsonl 的全量历史) ——
+
+@app.get("/api/log/events")
+async def api_log_events(
+    actor: str | None = None,
+    type: str | None = None,
+    visibility: str | None = None,
+    limit: int = 2000,
+) -> JSONResponse:
+    # 先快照一份引用,避免迭代时后台线程 append 造成不一致。
+    events = list(_conductor.world.event_log)
+    items = [event_entry(_conductor.world, e) for e in events]
+    if actor:
+        items = [x for x in items if x["actor_id"] == actor]
+    if type:
+        items = [x for x in items if x["type"] == type]
+    if visibility:
+        items = [x for x in items if x["visibility"] == visibility]
+    return JSONResponse({"total": len(items), "events": items[-limit:]})
 
 
 # —— 静态页:必须最后挂载(前缀 "/" 会吞掉所有路径) ——
