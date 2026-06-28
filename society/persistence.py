@@ -24,9 +24,13 @@ from society.core.models import Agent, Event, Location, WorldState
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
+# 活动场景:存档按场景隔离到 data/<scenario>/。None 时退回 data/ 根(兼容未指定场景)。
+_active_scenario: str | None = None
+
 
 def _root() -> Path:
-    return _PROJECT_ROOT / load_config().persistence.data_dir
+    base = _PROJECT_ROOT / load_config().persistence.data_dir
+    return base / _active_scenario if _active_scenario else base
 
 
 def _world_file() -> Path:
@@ -43,6 +47,17 @@ def _agents_dir() -> Path:
 
 # 模块级:上次落盘时 event_log 的长度,用于 diff append
 _last_persisted_count: int = 0
+
+
+def use_scenario(name: str) -> None:
+    """切换活动场景:之后的 save/load 落到 data/<name>/(各场景互不覆盖、可来回切)。
+
+    切档必须重置 _last_persisted_count —— 它是"上次落盘到 event_log 第几条"的游标,
+    跟着旧场景走;不重置会拿旧游标去 append 新场景的 events 造成错乱。随后的
+    load_world() 若读到存档会把游标重设为该存档长度,全新场景则保持 0。"""
+    global _active_scenario, _last_persisted_count
+    _active_scenario = name
+    _last_persisted_count = 0
 
 
 def save_world(world: WorldState) -> None:
