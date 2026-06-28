@@ -6,7 +6,7 @@
 <title>社会模拟 · 观察台</title>
 <style>
   :root {
-    --bg: #14161a; --panel: #1b1e24; --line: #2a2f38;
+    --bg: #14161a; --panel: #1b1e24; --line: #2a2f38; --hover: #232831;
     --fg: #e6e8eb; --dim: #8b929c; --accent: #6ea8fe;
     --speak: #e6e8eb; --inner: #7d8694; --act: #e0b65a;
     --move: #6fb98f; --world: #c98ad6; --terminal: #e06c75;
@@ -15,31 +15,41 @@
   body {
     margin: 0; background: var(--bg); color: var(--fg);
     font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    height: 100vh; display: flex; flex-direction: column;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
   }
   header {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
   }
   header .title { font-weight: 600; }
   header .status { color: var(--dim); font-size: 13px; }
   header .spacer { flex: 1; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button {
+    background: transparent; border: none; color: var(--dim);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  .tabs button.active { background: var(--hover); color: var(--fg); }
   button {
     background: #262b33; color: var(--fg); border: 1px solid var(--line);
-    border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 13px;
+    border-radius: 6px; padding: 6px 13px; cursor: pointer; font-size: 13px;
   }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: #0c1320; border-color: var(--accent); }
   label.toggle { color: var(--dim); font-size: 13px; cursor: pointer; user-select: none; }
-  #stream {
-    flex: 1; overflow-y: auto; padding: 16px 20px;
-  }
+  main { flex: 1; position: relative; overflow: hidden; }
+  .view { position: absolute; inset: 0; display: none; flex-direction: column; }
+  .view.active { display: flex; }
+  .scroll { flex: 1; overflow-y: auto; padding: 14px 20px; }
+
   .tick-sep {
-    margin: 18px 0 8px; color: var(--accent); font-size: 12px;
+    margin: 16px 0 6px; color: var(--accent); font-size: 12px;
     letter-spacing: .5px; border-bottom: 1px dashed var(--line); padding-bottom: 4px;
   }
   .ev { padding: 2px 0; display: flex; gap: 8px; }
-  .ev .who { color: var(--dim); min-width: 96px; text-align: right; flex-shrink: 0; }
+  .ev .who { color: var(--dim); min-width: 104px; text-align: right; flex-shrink: 0; }
+  .ev .who.clickable { cursor: pointer; }
+  .ev .who.clickable:hover { color: var(--accent); text-decoration: underline; }
   .ev .body { flex: 1; }
   .ev .tag {
     display: inline-block; font-size: 11px; color: var(--dim);
@@ -52,110 +62,357 @@
   .ev.world .who, .ev.world .body { color: var(--world); }
   .ev.hidden { display: none; }
   .terminal {
-    margin: 24px 0; padding: 14px; text-align: center; color: var(--terminal);
+    margin: 22px 0; padding: 13px; text-align: center; color: var(--terminal);
     border: 1px solid var(--terminal); border-radius: 8px; font-weight: 600;
   }
-  .conn-lost { color: var(--terminal); }
+
+  /* 历史档案过滤栏 */
+  .filterbar {
+    display: flex; gap: 8px; align-items: center; padding: 10px 20px;
+    background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .filterbar select, .modal select, .modal textarea {
+    background: #14161a; color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; font-size: 13px;
+  }
+  .filterbar .count { color: var(--dim); font-size: 12px; margin-left: auto; }
+
+  /* 注入弹窗 */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center; z-index: 30;
+  }
+  .modal.hidden, .drawer.hidden { display: none; }
+  .modal-box {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    width: 460px; max-width: 92vw; overflow: hidden;
+  }
+  .modal-tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .modal-tabs button {
+    flex: 1; background: transparent; border: none; border-radius: 0;
+    color: var(--dim); padding: 11px; cursor: pointer;
+  }
+  .modal-tabs button.active { background: var(--hover); color: var(--fg); }
+  .modal-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-body label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--dim); }
+  .modal-body select, .modal-body textarea { width: 100%; }
+  .modal-body textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+  .modal-hint { color: var(--dim); font-size: 12px; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 16px; }
+
+  /* 档案抽屉 */
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 380px; max-width: 90vw;
+    background: var(--panel); border-left: 1px solid var(--line); z-index: 20;
+    display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.3);
+  }
+  .drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600;
+  }
+  .drawer-head button { background: transparent; border: none; font-size: 20px; color: var(--dim); }
+  .drawer-body { overflow-y: auto; padding: 14px 16px; }
+  .dossier-field { margin-bottom: 12px; }
+  .dossier-field .k { color: var(--dim); font-size: 12px; margin-bottom: 2px; }
+  .dossier-field .v { white-space: pre-wrap; }
+  .dossier-field ul { margin: 4px 0 0; padding-left: 18px; }
+  .dossier-field li { margin: 2px 0; }
+  .rel-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .rel-row .nm { min-width: 64px; }
+  .rel-bar { flex: 1; height: 6px; background: #14161a; border-radius: 3px; overflow: hidden; }
+  .rel-bar i { display: block; height: 100%; }
 </style>
 </head>
 <body>
 <header>
   <span class="title">社会模拟 · 观察台</span>
+  <div class="tabs">
+    <button data-tab="live" class="active">实时直播</button>
+    <button data-tab="log">历史档案</button>
+  </div>
   <span class="status" id="status">连接中…</span>
   <span class="spacer"></span>
-  <label class="toggle"><input type="checkbox" id="showInner" checked> 内心(心声·盘算)</label>
+  <label class="toggle"><input type="checkbox" id="showInner" checked> 内心</label>
+  <button id="btnInject">注入</button>
   <button id="btnStep">步进</button>
   <button id="btnRun" class="primary">自动</button>
   <button id="btnPause">暂停</button>
 </header>
-<div id="stream"></div>
+
+<main>
+  <!-- 实时直播 -->
+  <section class="view active" id="view-live">
+    <div class="scroll" id="liveStream"></div>
+  </section>
+
+  <!-- 历史档案 -->
+  <section class="view" id="view-log">
+    <div class="filterbar">
+      <select id="fActor"><option value="">全部角色</option></select>
+      <select id="fType">
+        <option value="">全部动作</option>
+        <option value="speak">说</option><option value="silence">沉默</option>
+        <option value="act">做</option><option value="move">移动</option>
+        <option value="think">心声</option><option value="plan">盘算</option>
+      </select>
+      <select id="fVis">
+        <option value="">台面+内心</option>
+        <option value="public">仅台面</option><option value="private">仅内心</option>
+      </select>
+      <button id="fRefresh">刷新</button>
+      <span class="count" id="logCount"></span>
+    </div>
+    <div class="scroll" id="logStream"></div>
+  </section>
+</main>
+
+<!-- 档案抽屉 -->
+<div class="drawer hidden" id="dossier">
+  <div class="drawer-head"><span id="dossierName"></span><button id="dossierClose">×</button></div>
+  <div class="drawer-body" id="dossierBody"></div>
+</div>
+
+<!-- 注入弹窗 -->
+<div class="modal hidden" id="injectModal">
+  <div class="modal-box">
+    <div class="modal-tabs">
+      <button data-itab="fact" class="active">客观事实</button>
+      <button data-itab="impulse">冲动</button>
+      <button data-itab="belief">信念</button>
+    </div>
+    <div class="modal-body">
+      <label><span id="targetLabel">地点</span><select id="injectTarget"></select></label>
+      <label><span>内容</span><textarea id="injectContent" placeholder="发生了什么…"></textarea></label>
+      <div class="modal-hint" id="injectHint"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="injectCancel">取消</button>
+      <button id="injectSubmit" class="primary">注入</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const stream = document.getElementById("stream");
-const statusEl = document.getElementById("status");
-const showInner = document.getElementById("showInner");
+// —— 元数据缓存 ——
+let agents = [], locations = [];
+const agentName = id => (agents.find(a => a.id === id) || {}).name || id;
 
-// 动作类型 → (中文标签, 样式类)。think/plan 为内心(PRIVATE)。
+async function loadMeta() {
+  agents = await (await fetch("/api/agents")).json();
+  locations = await (await fetch("/api/locations")).json();
+  // 填充历史过滤的角色下拉
+  const fActor = document.getElementById("fActor");
+  agents.forEach(a => fActor.add(new Option(a.name, a.id)));
+}
+
+// —— 动作类型 → (中文标签, 样式类)。think/plan 为内心(PRIVATE) ——
 const TYPE_META = {
-  speak:   ["说",   "speak"],
-  silence: ["沉默", "speak"],
-  act:     ["做",   "act"],
-  move:    ["移动", "move"],
-  think:   ["心声", "inner"],
-  plan:    ["盘算", "inner"],
+  speak: ["说", "speak"], silence: ["沉默", "speak"], act: ["做", "act"],
+  move: ["移动", "move"], think: ["心声", "inner"], plan: ["盘算", "inner"],
 };
 
-function sceneLabel(time) {
-  if (time.scene) {
-    const s = time.scene;
-    return `Day ${s.day} · ${s.phase}（${s.tick_in_phase}）`;
-  }
-  return `第 ${time.tick} 拍`;
-}
+// 统一事件行渲染:实时流与历史档案归一成同一形状后共用。
+// row = {actor_name, actor_id, location_name, type, content, visibility}
+function renderEventRow(row, container) {
+  const [label, cls] = TYPE_META[row.type] || [row.type, ""];
+  const isInner = row.visibility === "private";
+  const isWorld = row.actor_name === "旁白";
 
-function atBottom() {
-  return stream.scrollHeight - stream.scrollTop - stream.clientHeight < 60;
-}
-function maybeScroll(was) { if (was) stream.scrollTop = stream.scrollHeight; }
-
-function renderTick(msg) {
-  const div = document.createElement("div");
-  div.className = "tick-sep";
-  div.textContent = "── " + sceneLabel(msg.time) + " ──";
-  stream.appendChild(div);
-}
-
-function renderEvent(msg) {
-  const ev = msg.event;
-  const [label, cls] = TYPE_META[ev.type] || [ev.type, ""];
-  const isInner = ev.visibility === "private";
-  const isWorld = msg.actor_name === "旁白";
-
-  const row = document.createElement("div");
-  row.className = "ev " + cls + (isWorld ? " world" : "") + (isInner ? " inner" : "");
-  if (isInner) row.dataset.inner = "1";
-  if (isInner && !showInner.checked) row.classList.add("hidden");
+  const el = document.createElement("div");
+  el.className = "ev " + cls + (isWorld ? " world" : "") + (isInner ? " inner" : "");
+  if (isInner) el.dataset.inner = "1";
+  if (isInner && !document.getElementById("showInner").checked) el.classList.add("hidden");
 
   const who = document.createElement("span");
-  who.className = "who";
-  who.textContent = msg.actor_name + " @" + msg.location_name;
+  who.className = "who" + (!isWorld ? " clickable" : "");
+  who.textContent = row.actor_name + " @" + row.location_name;
+  if (!isWorld) who.onclick = () => openDossier(row.actor_id);
 
   const body = document.createElement("span");
   body.className = "body";
   const tag = document.createElement("span");
-  tag.className = "tag";
-  tag.textContent = label;
+  tag.className = "tag"; tag.textContent = label;
   body.appendChild(tag);
-  body.appendChild(document.createTextNode(ev.content));
+  body.appendChild(document.createTextNode(row.content));
 
-  row.appendChild(who);
-  row.appendChild(body);
-  stream.appendChild(row);
+  el.appendChild(who); el.appendChild(body);
+  container.appendChild(el);
 }
 
-function renderTerminal(msg) {
+function tickSep(text, container) {
   const div = document.createElement("div");
-  div.className = "terminal";
-  div.textContent = "【终局】" + msg.terminal_event;
-  stream.appendChild(div);
+  div.className = "tick-sep"; div.textContent = "── " + text + " ──";
+  container.appendChild(div);
 }
 
-function handle(msg) {
-  const was = atBottom();
-  if (msg.kind === "tick") renderTick(msg);
-  else if (msg.kind === "event") renderEvent(msg);
-  else if (msg.kind === "terminal") renderTerminal(msg);
-  maybeScroll(was);
+// —— 实时直播 ——
+const liveStream = document.getElementById("liveStream");
+const statusEl = document.getElementById("status");
+
+function sceneLabel(time) {
+  if (time.scene) { const s = time.scene; return `Day ${s.day} · ${s.phase}（${s.tick_in_phase}）`; }
+  return `第 ${time.tick} 拍`;
+}
+function atBottom(el) { return el.scrollHeight - el.scrollTop - el.clientHeight < 60; }
+
+function handleSignal(msg) {
+  const was = atBottom(liveStream);
+  if (msg.kind === "tick") {
+    tickSep(sceneLabel(msg.time), liveStream);
+  } else if (msg.kind === "event") {
+    const e = msg.event;
+    renderEventRow({
+      actor_name: msg.actor_name, actor_id: e.actor_id, location_name: msg.location_name,
+      type: e.type, content: e.content, visibility: e.visibility,
+    }, liveStream);
+  } else if (msg.kind === "terminal") {
+    const div = document.createElement("div");
+    div.className = "terminal"; div.textContent = "【终局】" + msg.terminal_event;
+    liveStream.appendChild(div);
+  }
+  if (was) liveStream.scrollTop = liveStream.scrollHeight;
 }
 
-// 内心图层开关:整体显隐已渲染的 PRIVATE 行。
-showInner.addEventListener("change", () => {
-  document.querySelectorAll('.ev[data-inner="1"]').forEach(row => {
-    row.classList.toggle("hidden", !showInner.checked);
-  });
+// 内心图层开关:整体显隐已渲染的 PRIVATE 行(两个视图统一)。
+document.getElementById("showInner").addEventListener("change", e => {
+  document.querySelectorAll('.ev[data-inner="1"]').forEach(row =>
+    row.classList.toggle("hidden", !e.target.checked));
 });
 
-// 控制按钮 → REST(瞬时返回)。
+// —— 历史档案 ——
+const logStream = document.getElementById("logStream");
+async function loadLog() {
+  const actor = document.getElementById("fActor").value;
+  const type = document.getElementById("fType").value;
+  const vis = document.getElementById("fVis").value;
+  const qs = new URLSearchParams();
+  if (actor) qs.set("actor", actor);
+  if (type) qs.set("type", type);
+  if (vis) qs.set("visibility", vis);
+  const data = await (await fetch("/api/log/events?" + qs)).json();
+  logStream.innerHTML = "";
+  let lastTick = null;
+  data.events.forEach(ev => {
+    if (ev.tick !== lastTick) { tickSep("第 " + ev.tick + " 拍", logStream); lastTick = ev.tick; }
+    renderEventRow(ev, logStream);  // event_entry 已含 actor_name/location_name/actor_id
+  });
+  document.getElementById("logCount").textContent = `共 ${data.total} 条`;
+}
+document.getElementById("fRefresh").onclick = loadLog;
+["fActor", "fType", "fVis"].forEach(id =>
+  document.getElementById(id).addEventListener("change", loadLog));
+
+// —— tab 切换 ——
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.getElementById("view-live").classList.toggle("active", tab === "live");
+    document.getElementById("view-log").classList.toggle("active", tab === "log");
+    if (tab === "log") loadLog();
+  };
+});
+
+// —— 档案抽屉 ——
+const drawer = document.getElementById("dossier");
+document.getElementById("dossierClose").onclick = () => drawer.classList.add("hidden");
+
+function field(k, v) {
+  if (!v) return "";
+  return `<div class="dossier-field"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`;
+}
+function listField(k, arr) {
+  if (!arr || !arr.length) return "";
+  return `<div class="dossier-field"><div class="k">${k}</div><ul>` +
+    arr.map(x => `<li>${escapeHtml(x)}</li>`).join("") + `</ul></div>`;
+}
+function relField(rel) {
+  const ks = Object.keys(rel || {});
+  if (!ks.length) return "";
+  const rows = ks.map(id => {
+    const v = rel[id];                       // -100..100
+    const pct = Math.abs(v) / 100 * 100;
+    const color = v >= 0 ? "var(--move)" : "var(--terminal)";
+    return `<div class="rel-row"><span class="nm">${escapeHtml(agentName(id))}</span>` +
+      `<span class="rel-bar"><i style="width:${pct}%;background:${color}"></i></span>` +
+      `<span style="color:var(--dim);min-width:34px;text-align:right">${v}</span></div>`;
+  }).join("");
+  return `<div class="dossier-field"><div class="k">关系(好感)</div>${rows}</div>`;
+}
+function imprField(impr) {
+  const ks = Object.keys(impr || {});
+  if (!ks.length) return "";
+  const items = ks.map(id => `${agentName(id)}：${impr[id]}`);
+  return listField("印象(私下看法)", items);
+}
+
+async function openDossier(id) {
+  drawer.classList.remove("hidden");
+  document.getElementById("dossierName").textContent = "加载中…";
+  document.getElementById("dossierBody").innerHTML = "";
+  const a = await (await fetch("/api/agent/" + encodeURIComponent(id))).json();
+  if (a.error) { document.getElementById("dossierName").textContent = a.error; return; }
+  document.getElementById("dossierName").textContent =
+    `${a.name} @ ${(locations.find(l => l.id === a.location_id) || {}).name || a.location_id}`;
+  document.getElementById("dossierBody").innerHTML =
+    field("人前", a.public_persona) +
+    field("真实欲求", a.private_goal) +
+    field("秘密", a.secret) +
+    field("当前盘算", a.plan) +
+    listField("信念(植入)", a.beliefs) +
+    relField(a.relationships) +
+    imprField(a.impressions) +
+    listField("待发冲动", a.impulses) +
+    listField("近期记忆", (a.memory || []).slice(-8));
+}
+
+// —— 注入弹窗 ——
+const modal = document.getElementById("injectModal");
+let injectType = "fact";
+const HINTS = {
+  fact: "客观事实(旁白):下一拍在此地点当众发生,在场者感知并永久记住。",
+  impulse: "冲动:一瞬窜起的念头,只拨动 TA 下一步,用完即清。",
+  belief: "信念:持久植入的认知,长留自我、染色其后续,跨重启存活。",
+};
+function fillTarget() {
+  const sel = document.getElementById("injectTarget");
+  sel.innerHTML = "";
+  if (injectType === "fact") {
+    document.getElementById("targetLabel").textContent = "地点";
+    locations.forEach(l => sel.add(new Option(l.name, l.id)));
+  } else {
+    document.getElementById("targetLabel").textContent = "角色";
+    agents.forEach(a => sel.add(new Option(a.name, a.id)));
+  }
+  document.getElementById("injectHint").textContent = HINTS[injectType];
+}
+function openInject() { injectType = "fact"; setITab("fact"); document.getElementById("injectContent").value = ""; modal.classList.remove("hidden"); }
+function setITab(t) {
+  injectType = t;
+  document.querySelectorAll(".modal-tabs button").forEach(b =>
+    b.classList.toggle("active", b.dataset.itab === t));
+  fillTarget();
+}
+document.getElementById("btnInject").onclick = openInject;
+document.getElementById("injectCancel").onclick = () => modal.classList.add("hidden");
+document.querySelectorAll(".modal-tabs button").forEach(b => b.onclick = () => setITab(b.dataset.itab));
+
+document.getElementById("injectSubmit").onclick = async () => {
+  const target = document.getElementById("injectTarget").value;
+  const content = document.getElementById("injectContent").value.trim();
+  if (!content) { document.getElementById("injectHint").textContent = "内容不能为空。"; return; }
+  const body = injectType === "fact"
+    ? { location_id: target, content } : { agent_id: target, content };
+  const res = await fetch("/api/inject/" + injectType, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (data.error) { document.getElementById("injectHint").textContent = data.error; return; }
+  modal.classList.add("hidden");
+};
+
+// —— 控制按钮 ——
 const post = (path) => fetch(path, { method: "POST" }).then(r => r.json()).then(updateStatus);
 document.getElementById("btnStep").onclick = () => post("/api/step");
 document.getElementById("btnRun").onclick = () => post("/api/run");
@@ -164,24 +421,24 @@ document.getElementById("btnPause").onclick = () => post("/api/pause");
 function updateStatus(st) {
   if (!st) return;
   const mode = st.running ? "自动推进中" : (st.step_budget > 0 ? "步进中" : "暂停");
-  const term = st.terminal ? " · 已近终局" : "";
-  statusEl.textContent = `${mode} · 第 ${st.tick} 拍${term}`;
-  statusEl.classList.remove("conn-lost");
+  statusEl.textContent = `${mode} · 第 ${st.tick} 拍${st.terminal ? " · 已近终局" : ""}`;
 }
 
-// websocket:实时信号流(新连接先收到完整历史回放)。
+// —— websocket:实时信号流(新连接先收到完整历史回放) ——
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.onmessage = (e) => handle(JSON.parse(e.data));
+  ws.onmessage = e => handleSignal(JSON.parse(e.data));
   ws.onopen = () => fetch("/api/state").then(r => r.json()).then(updateStatus);
-  ws.onclose = () => {
-    statusEl.textContent = "连接断开,重连中…";
-    statusEl.classList.add("conn-lost");
-    setTimeout(connect, 1500);
-  };
+  ws.onclose = () => { statusEl.textContent = "连接断开,重连中…"; setTimeout(connect, 1500); };
 }
-connect();
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+loadMeta().then(connect);
 </script>
 </body>
 </html>
