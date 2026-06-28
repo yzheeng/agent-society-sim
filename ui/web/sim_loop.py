@@ -69,6 +69,14 @@ class SimLoop:
         self._stop = True
         self._wake.set()
 
+    def stop_and_join(self, timeout: float = 10.0) -> None:
+        """停后台线程并等它退出 —— 切场景时用。
+
+        join 会阻塞到当前拍跑完(LLM 不可中断),故调用方应丢到线程池(asyncio.to_thread)
+        执行,避免卡住事件循环。"""
+        self.stop()
+        self._thread.join(timeout=timeout)
+
     def submit(self, fn: Callable[[], Any]) -> Future:
         """把一个 world 写操作排给后台线程,在拍间执行。返回 Future 供调用方等结果。
 

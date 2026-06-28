@@ -79,6 +79,15 @@ class ConnectionManager:
     def disconnect(self, q: asyncio.Queue[dict]) -> None:
         self._queues.discard(q)
 
+    def reset(self) -> None:
+        """切场景:清空历史回放,给各活动连接推一个 reset 信号让前端清屏。
+
+        只在事件循环线程调用(与 _deliver 同线程,故直接操作内部状态无需加锁)。
+        新场景的 emit 随后照常经 publish 进来。"""
+        self._history.clear()
+        for q in self._queues:
+            q.put_nowait({"kind": "reset"})
+
 
 class WebSocketSink:
     """SimSink 实现:把引擎吐出的 Signal 序列化后交给 ConnectionManager 广播。
