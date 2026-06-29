@@ -84,6 +84,12 @@ class Agent:
     secret: str                # 被戳破会出事的东西
     plan: str = ""             # 当前短期打算,每回合可更新
 
+    # —— 处境背景:这个角色对"自己正身处什么局面、时间窗口、利害攸关之处"的
+    #    第一人称理解。它把场景层的 terminal_event 等客观设定,翻译成"对我意味着
+    #    什么"——好让那块报时的"钟"真正压到行为上。可选;老场景不写则为空,
+    #    渲染侧据此跳过,不穿帮、不留空行。
+    background: str = ""
+
     # —— 信念:导演"植入"的持久认知,长留在自我里,每拍都给行为染色。
     #    与 impulses(转瞬冲动)相对,这是【持久】的——进 to_dict/from_dict,跨重启存活。
     beliefs: list[str] = field(default_factory=list)
@@ -112,6 +118,7 @@ class Agent:
             "private_goal": self.private_goal,
             "secret": self.secret,
             "plan": self.plan,
+            "background": self.background,
             "beliefs": list(self.beliefs),
             "relationships": dict(self.relationships),
             "impressions": dict(self.impressions),
@@ -128,6 +135,7 @@ class Agent:
             private_goal=d["private_goal"],
             secret=d["secret"],
             plan=d.get("plan", ""),
+            background=d.get("background", ""),
             beliefs=list(d.get("beliefs", [])),
             relationships=dict(d.get("relationships", {})),
             impressions=dict(d.get("impressions", {})),
